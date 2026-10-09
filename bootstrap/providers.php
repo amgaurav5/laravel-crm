@@ -22,6 +22,7 @@ use Webkul\Product\Providers\ProductServiceProvider;
 use Webkul\Quote\Providers\QuoteServiceProvider;
 use Webkul\Tag\Providers\TagServiceProvider;
 use Webkul\User\Providers\UserServiceProvider;
+use Webkul\ViaSocket\Providers\ViaSocketServiceProvider;
 use Webkul\Warehouse\Providers\WarehouseServiceProvider;
 use Webkul\WebForm\Providers\WebFormServiceProvider;
 
@@ -59,6 +60,7 @@ return [
     QuoteServiceProvider::class,
     TagServiceProvider::class,
     UserServiceProvider::class,
+    ViaSocketServiceProvider::class,
     WarehouseServiceProvider::class,
     WebFormServiceProvider::class,
 ];

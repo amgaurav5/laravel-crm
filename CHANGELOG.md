@@ -4,6 +4,8 @@ This changelog consists of the bug & security fixes and new features being inclu
 
 ## **v2.2.6 (10th of Sept 2026)**
 
+* [feature] Added an optional viaSocket integrations module. It is off by default and turns on when `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID` and `VIASOCKET_EMBED_SECRET` are set. It adds a Settings page that embeds viaSocket so users can connect their apps and build automations without Krayin building each connector, and runs the published automations when a lead is created.
+
 * [feature] Added MariaDB support.
 
 * [feature] Added customizable lead card information. Datagrid columns and Kanban lead card fields can now be chosen per user through new column and card settings components.
