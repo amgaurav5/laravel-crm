@@ -95,13 +95,25 @@
                         ></p>
                     </div>
 
-                    <button
-                        v-if="view === 'list' && flows.length"
-                        type="button"
-                        class="primary-button"
-                        @click="newFlow"
-                        v-text="messages.ui.new_flow"
-                    ></button>
+                    <span
+                        v-if="view === 'list' || view === 'connections'"
+                        class="vs-actions"
+                    >
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="openConnections"
+                            v-text="messages.ui.connected_apps"
+                        ></button>
+
+                        <button
+                            v-if="flows.length"
+                            type="button"
+                            class="primary-button"
+                            @click="newFlow"
+                            v-text="messages.ui.new_flow"
+                        ></button>
+                    </span>
                 </div>
 
                 <div
@@ -243,6 +255,98 @@
                         </div>
                     </div>
                 </template>
+
+                <!-- Connected apps -->
+                <div
+                    v-else-if="view === 'connections'"
+                    class="flex flex-col gap-4"
+                >
+                    <div class="vs-bar">
+                        <span class="vs-grow">
+                            <span
+                                class="vs-title"
+                                v-text="messages.ui.connected_apps"
+                            ></span>
+
+                            <span
+                                class="vs-sub"
+                                v-text="messages.ui.connected_apps_info"
+                            ></span>
+                        </span>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="view = 'list'; error = ''"
+                            v-text="messages.ui.back_to_flows"
+                        ></button>
+                    </div>
+
+                    <div class="vs-panel">
+                        <p
+                            v-if="connectionsLoading"
+                            class="vs-hint"
+                            v-text="messages.ui.loading"
+                        ></p>
+
+                        <p
+                            v-else-if="! connections.length"
+                            class="vs-hint"
+                            v-text="messages.ui.no_connections"
+                        ></p>
+
+                        <div
+                            v-else
+                            class="vs-list"
+                        >
+                            <div
+                                v-for="connection in connections"
+                                :key="connection.service_id"
+                                class="vs-card"
+                            >
+                                <img
+                                    v-if="connection.icon"
+                                    :src="connection.icon"
+                                    alt=""
+                                    class="vs-icon"
+                                >
+
+                                <span
+                                    v-else
+                                    class="vs-icon vs-letter"
+                                    v-text="connection.name.charAt(0)"
+                                ></span>
+
+                                <span class="vs-grow">
+                                    <span
+                                        class="vs-title"
+                                        v-text="connection.name"
+                                    ></span>
+
+                                    <span
+                                        class="vs-sub"
+                                        v-text="connection.used_by.length ? messages.ui.in_use.replace(':flows', connection.used_by.join(', ')) : messages.ui.not_in_use"
+                                    ></span>
+
+                                    <span
+                                        v-if="connection.connected_at"
+                                        class="vs-sub"
+                                        v-text="messages.ui.connected_since.replace(':date', connection.connected_at)"
+                                    ></span>
+                                </span>
+
+                                <button
+                                    type="button"
+                                    class="secondary-button"
+                                    :disabled="busy || connection.used_by.length > 0"
+                                    :title="connection.used_by.length ? messages.ui.in_use.replace(':flows', connection.used_by.join(', ')) : ''"
+                                    @click="disconnectApp(connection)"
+                                    v-text="messages.ui.disconnect"
+                                ></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- History -->
                 <div
@@ -905,6 +1009,10 @@
 
                         searchTimer: null,
 
+                        connections: [],
+
+                        connectionsLoading: false,
+
                         historyFlow: null,
 
                         runs: [],
@@ -930,6 +1038,10 @@
                             flow: {!! json_encode(route('admin.integrations.flows.update', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                             status: {!! json_encode(route('admin.integrations.flows.status', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                             destroy: {!! json_encode(route('admin.integrations.flows.destroy', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
+                            connections: {!! json_encode(route('admin.integrations.connections.index'), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
+
+                            disconnect: {!! json_encode(route('admin.integrations.connections.destroy', ['serviceId' => '__SERVICE__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
+
                             history: {!! json_encode(route('admin.integrations.flows.history', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                         },
                     };
@@ -1132,6 +1244,41 @@
 
                     triggerLetter(trigger) {
                         return trigger.kind === 'schedule' ? 'S' : (trigger.kind === 'krayin' ? 'K' : (this.entrySubtitle(trigger) || '?').charAt(0));
+                    },
+
+                    async openConnections() {
+                        this.error = '';
+                        this.connections = [];
+                        this.view = 'connections';
+                        this.connectionsLoading = true;
+
+                        const response = await this.request(this.urls.connections);
+
+                        this.connections = response.ok ? response.data.connections : [];
+                        this.connectionsLoading = false;
+                    },
+
+                    async disconnectApp(connection) {
+                        if (! window.confirm(this.messages.ui.disconnect_confirm.replace(':name', connection.name))) {
+                            return;
+                        }
+
+                        this.busy = true;
+                        this.error = '';
+
+                        const response = await this.request(this.url(this.urls.disconnect, { SERVICE: connection.service_id }), 'DELETE');
+
+                        this.busy = false;
+
+                        if (! response.ok) {
+                            this.fail(response);
+
+                            return;
+                        }
+
+                        this.notify(this.messages.ui.disconnected);
+
+                        await this.openConnections();
                     },
 
                     async openHistory(flow) {

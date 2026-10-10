@@ -11,6 +11,7 @@ return [
             'admin.integrations.app',
             'admin.integrations.schema',
             'admin.integrations.options',
+            'admin.integrations.connections.index',
             'admin.integrations.connections.store',
             'admin.integrations.connections.destroy',
             'admin.integrations.flows.index',

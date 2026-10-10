@@ -10,6 +10,7 @@ use Illuminate\View\View;
 use Throwable;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\ViaSocket\Repositories\ViaSocketConnectionRepository;
+use Webkul\ViaSocket\Repositories\ViaSocketFlowRepository;
 use Webkul\ViaSocket\Services\CatalogService;
 use Webkul\ViaSocket\Services\EmbedTokenService;
 use Webkul\ViaSocket\Support\KrayinEvents;
@@ -23,6 +24,7 @@ class IntegrationController extends Controller
         protected EmbedTokenService $embedTokenService,
         protected CatalogService $catalogService,
         protected ViaSocketConnectionRepository $viaSocketConnectionRepository,
+        protected ViaSocketFlowRepository $viaSocketFlowRepository,
     ) {}
 
     /**
@@ -124,6 +126,30 @@ class IntegrationController extends Controller
     }
 
     /**
+     * The apps the signed-in user has connected, with the flows that use each one.
+     */
+    public function connections(): JsonResponse
+    {
+        $connections = $this->viaSocketConnectionRepository
+            ->findWhere(['user_id' => $this->userId()])
+            ->sortByDesc('id')
+            ->map(function ($connection) {
+                $app = $this->catalogService->app($connection->service_id);
+
+                return [
+                    'service_id' => $connection->service_id,
+                    'name' => $app['name'] ?? $connection->service_id,
+                    'icon' => $app['icon'] ?? null,
+                    'connected_at' => $connection->created_at?->toDateTimeString(),
+                    'used_by' => $this->flowsUsing($connection->service_id),
+                ];
+            })
+            ->values();
+
+        return response()->json(['connections' => $connections]);
+    }
+
+    /**
      * Store the connection a user just made in the popup.
      */
     public function store(Request $request): JsonResponse
@@ -154,6 +180,10 @@ class IntegrationController extends Controller
             return response()->json(['ok' => true]);
         }
 
+        if ($flows = $this->flowsUsing($serviceId)) {
+            return response()->json(['message' => 'Still used by: '.implode(', ', $flows).'. Delete or change those flows first.'], 422);
+        }
+
         try {
             $response = Http::timeout(10)
                 ->withHeaders(['authorization' => $this->embedTokenService->make($this->identifier())])
@@ -169,6 +199,20 @@ class IntegrationController extends Controller
         $connection->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Titles of the signed-in user's flows that use an app.
+     */
+    protected function flowsUsing(string $serviceId): array
+    {
+        return $this->viaSocketFlowRepository
+            ->findWhere(['user_id' => $this->userId()])
+            ->filter(fn ($flow) => ($flow->trigger['service_id'] ?? null) === $serviceId
+                || collect($flow->steps)->contains('service_id', $serviceId))
+            ->pluck('title')
+            ->values()
+            ->all();
     }
 
     /**

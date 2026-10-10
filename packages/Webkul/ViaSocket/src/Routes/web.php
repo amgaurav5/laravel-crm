@@ -19,6 +19,8 @@ Route::controller(IntegrationController::class)->group(function () {
 
     Route::post('apps/{serviceId}/options', 'options')->name('admin.integrations.options');
 
+    Route::get('connections', 'connections')->name('admin.integrations.connections.index');
+
     Route::post('connections', 'store')->name('admin.integrations.connections.store');
 
     Route::delete('connections/{serviceId}', 'destroy')->name('admin.integrations.connections.destroy');
