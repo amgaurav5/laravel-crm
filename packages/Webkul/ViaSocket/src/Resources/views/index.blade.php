@@ -820,7 +820,7 @@
 
                                             <span
                                                 class="vs-sub"
-                                                v-text="entrySubtitle(draft.trigger)"
+                                                v-text="entrySubtitle(draft.trigger) + (draft.trigger.polled ? ' - ' + messages.ui.polled_hint : '')"
                                             ></span>
                                         </span>
 
@@ -870,6 +870,12 @@
                                             alt=""
                                             class="vs-icon"
                                         >
+
+                                        <span
+                                            v-else
+                                            class="vs-icon vs-letter"
+                                            v-text="stepLetter(step)"
+                                        ></span>
 
                                         <span class="vs-grow">
                                             <span
@@ -1018,6 +1024,45 @@
                             class="text-sm text-gray-600 dark:text-gray-300"
                             v-text="messages.ui.loading"
                         ></p>
+
+                        <template v-if="visibleTools.length">
+                            <p
+                                class="vs-label"
+                                v-text="messages.ui.tools_title"
+                            ></p>
+
+                            <div class="vs-grid">
+                                <button
+                                    v-for="tool in visibleTools"
+                                    :key="tool.key"
+                                    type="button"
+                                    class="vs-tile"
+                                    @click="chooseTool(tool)"
+                                >
+                                    <span
+                                        class="vs-icon vs-letter"
+                                        v-text="messages.ui.tools[tool.key].name.charAt(0)"
+                                    ></span>
+
+                                    <span class="vs-tile-text">
+                                        <span
+                                            class="vs-title"
+                                            v-text="messages.ui.tools[tool.key].name"
+                                        ></span>
+
+                                        <span
+                                            class="vs-sub"
+                                            v-text="messages.ui.tools[tool.key].description"
+                                        ></span>
+                                    </span>
+                                </button>
+                            </div>
+
+                            <p
+                                class="vs-label"
+                                v-text="messages.ui.apps_title"
+                            ></p>
+                        </template>
 
                         <div class="vs-grid">
                             <button
@@ -1259,6 +1304,21 @@
             const CLOSE = '}' + '}';
             const KRAYIN = '__krayin__';
             const SCHEDULE = '__schedule__';
+
+            // Existing viaSocket plugs, shown under their own names in a row of their own.
+            const TOOLS = [
+                { key: 'delay', service_id: 'row29ruc9gs1', action: 'Pause Workflow' },
+                { key: 'ai', service_id: 'row29ruc9gs1', action: 'Run AI Model' },
+                { key: 'decision', service_id: 'rowobx9xja6l', action: 'Decision Maker' },
+                { key: 'summarize', service_id: 'rowaqdsydi5g', action: 'Summarize Text' },
+                { key: 'translate', service_id: 'rowl7uw6muox', action: 'Translate Text' },
+                { key: 'json', service_id: 'rowt1a8wzkke', action: 'Convert to JSON' },
+                { key: 'extract', service_id: 'rowki67sfgbt', action: 'Extract Website Data' },
+                { key: 'flow', service_id: 'row29ruc9gs1', action: 'Flow in Flow' },
+                { key: 'storage', service_id: 'rowhc2623dta', action: null },
+            ];
+
+            const TOOL_SERVICES = [...new Set(TOOLS.map((tool) => tool.service_id))];
 
             const TEMPLATES = [
                 {
@@ -1631,6 +1691,16 @@
                         return this.picker.kind === 'trigger' ? this.picker.app.triggers : this.picker.app.actions;
                     },
 
+                    visibleTools() {
+                        if (this.picker.kind !== 'action') {
+                            return [];
+                        }
+
+                        const term = this.picker.query.trim().toLowerCase();
+
+                        return TOOLS.filter((tool) => ! term || (this.messages.ui.tools[tool.key].name + ' ' + this.messages.ui.tools[tool.key].description).toLowerCase().includes(term));
+                    },
+
                     variableOptions() {
                         return this.variablePaths.map((path) => ({ value: path, label: this.pretty(path) }));
                     },
@@ -1760,8 +1830,12 @@
                         this.error = errors[0] || response.data.message || this.messages.ui.error;
                     },
 
+                    stepLetter(step) {
+                        return (step.app_name === this.messages.ui.tools_category ? step.name : (step.app_name || '?')).charAt(0);
+                    },
+
                     summary(flow) {
-                        const steps = flow.steps.map((step) => step.app_name + ' - ' + step.name).join(', ');
+                        const steps = flow.steps.map((step) => (step.app_name === this.messages.ui.tools_category ? '' : step.app_name + ' - ') + step.name).join(', ');
 
                         return flow.trigger.label + '  >  ' + steps;
                     },
@@ -1771,7 +1845,7 @@
 
                         const nodes = [{ icon: trigger.icon || null, letter: trigger.kind === 'schedule' ? 'S' : (trigger.kind === 'krayin' ? 'K' : (trigger.label || '?').charAt(0)) }];
 
-                        flow.steps.forEach((step) => nodes.push({ icon: step.icon || null, letter: (step.app_name || '?').charAt(0) }));
+                        flow.steps.forEach((step) => nodes.push({ icon: step.icon || null, letter: this.stepLetter(step) }));
 
                         return nodes;
                     },
@@ -1828,6 +1902,20 @@
                         await this.chooseApp({ id: wanted.service_id });
 
                         const item = this.pickerItems.find((candidate) => candidate.name.trim().toLowerCase() === wanted.name.toLowerCase());
+
+                        if (item) {
+                            await this.chooseItem(item);
+                        }
+                    },
+
+                    async chooseTool(tool) {
+                        await this.chooseApp({ id: tool.service_id });
+
+                        if (! tool.action) {
+                            return;
+                        }
+
+                        const item = this.pickerItems.find((candidate) => candidate.name === this.messages.ui.tools[tool.key].name);
 
                         if (item) {
                             await this.chooseItem(item);
@@ -2122,7 +2210,7 @@
                             { id: SCHEDULE, name: this.messages.ui.schedule, description: this.messages.ui.schedule_info, special: true },
                         ] : [];
 
-                        this.picker.apps = special.concat(response.ok ? response.data.apps : []);
+                        this.picker.apps = special.concat(response.ok ? response.data.apps.filter((app) => ! TOOL_SERVICES.includes(app.id)) : []);
                         this.picker.loadingApps = false;
                     },
 
@@ -2145,6 +2233,19 @@
                             this.fail(response);
 
                             return;
+                        }
+
+                        const tools = TOOLS.filter((tool) => tool.service_id === app.id);
+
+                        if (tools.length) {
+                            const names = Object.fromEntries(tools.filter((tool) => tool.action).map((tool) => [tool.action, this.messages.ui.tools[tool.key].name]));
+
+                            response.data.name = tools.some((tool) => tool.action) ? this.messages.ui.tools_category : this.messages.ui.tools[tools[0].key].name;
+                            response.data.icon = null;
+
+                            if (Object.keys(names).length) {
+                                response.data.actions = response.data.actions.filter((action) => names[action.name]).map((action) => ({ ...action, name: names[action.name] }));
+                            }
                         }
 
                         this.picker.app = response.data;
@@ -2288,6 +2389,7 @@
                                 name: item.name,
                                 label: app.name + ' - ' + item.name,
                                 icon: app.icon,
+                                polled: !! item.polled,
                                 sample: item.sample || null,
                                 values,
                                 fields,

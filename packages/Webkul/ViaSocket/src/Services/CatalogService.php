@@ -65,6 +65,7 @@ class CatalogService
                 'name' => $trigger['name'],
                 'description' => $trigger['description'] ?? null,
                 'sample' => $trigger['sample_output'] ?? null,
+                'polled' => (bool) ($trigger['polled'] ?? false),
             ])->values()->all(),
         ];
     }
