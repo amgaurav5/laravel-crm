@@ -60,6 +60,29 @@
             .vs-stepper .done { color: #6b7280; }
             .vs-stepper i { color: #d1d5db; font-style: normal; }
             .vs-toast { position: fixed; top: 76px; right: 24px; z-index: 50; padding: 10px 16px; border-radius: 8px; background: #166534; color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .2); }
+            .vs-select { position: relative; }
+            .vs-select-box { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 4px 10px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; font-size: 14px; color: #1f2937; }
+            .vs-select-box:hover { border-color: #9ca3af; }
+            .vs-select-box.disabled { opacity: .6; cursor: not-allowed; }
+            .vs-select-placeholder { color: #9ca3af; }
+            .vs-select-caret { margin-left: auto; color: #6b7280; font-size: 11px; }
+            .vs-chipx { display: inline-flex; align-items: center; gap: 4px; background: #e0f2fe; color: #075985; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+            .vs-chipx b { cursor: pointer; font-weight: 400; }
+            .vs-select-menu { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); max-height: 280px; overflow: auto; }
+            .vs-select-search { width: 100%; padding: 8px 10px; border: 0; border-bottom: 1px solid #e5e7eb; font-size: 13px; outline: none; background: transparent; color: inherit; }
+            .vs-option { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 14px; cursor: pointer; color: #1f2937; }
+            .vs-option:hover { background: rgba(14, 144, 217, .08); }
+            .vs-option.selected { background: rgba(14, 144, 217, .14); font-weight: 600; }
+            .vs-select-empty { padding: 10px; font-size: 13px; color: #6b7280; }
+            .vs-link { font-size: 12px; color: #0e90d9; background: transparent; border: 0; cursor: pointer; padding: 0; margin-top: 4px; }
+            .vs-rows { display: flex; flex-direction: column; gap: 8px; }
+            .vs-row { display: flex; align-items: flex-start; gap: 8px; }
+            .vs-row > * { flex: 1; min-width: 0; }
+            .vs-row > button { flex: none; }
+            .vs-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid #fcd34d; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 13px; }
+            html.dark .vs-select-box, html.dark .vs-select-menu { background: #111827; border-color: #374151; color: #e5e7eb; }
+            html.dark .vs-option { color: #e5e7eb; }
+            html.dark .vs-banner { background: #3b2f0b; border-color: #92400e; color: #fde68a; }
             html.dark .vs-card, html.dark .vs-flow, html.dark .vs-panel, html.dark .vs-empty, html.dark .vs-bar { background: #111827; border-color: #1f2937; }
             html.dark .vs-title { color: #f3f4f6; }
             html.dark .vs-icon { background: #1f2937; }
@@ -71,6 +94,285 @@
 
     @pushOnce('scripts')
         <script src="{{ $connectScript }}"></script>
+
+        <script
+            type="text/x-template"
+            id="v-vs-select-template"
+        >
+            <div class="vs-select">
+                <input
+                    v-if="manual"
+                    type="text"
+                    class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                    :value="manualText"
+                    :placeholder="customPlaceholder"
+                    @input="onManual($event.target.value)"
+                >
+
+                <template v-else>
+                    <div
+                        class="vs-select-box"
+                        :class="{ disabled }"
+                        tabindex="0"
+                        @click="toggle"
+                        @keydown.enter.prevent="toggle"
+                        @keydown.esc="open = false"
+                    >
+                        <span
+                            v-if="! selectedLabels.length"
+                            class="vs-select-placeholder"
+                            v-text="loading ? texts.loading : (disabled ? texts.connect_to_load : (placeholder || texts.select))"
+                        ></span>
+
+                        <template v-else>
+                            <span
+                                v-if="! multiple"
+                                v-text="selectedLabels[0]"
+                            ></span>
+
+                            <template v-else>
+                                <span
+                                    v-for="(label, index) in selectedLabels"
+                                    :key="index"
+                                    class="vs-chipx"
+                                >
+                                    <span v-text="label"></span>
+
+                                    <b @click.stop="remove(index)">&times;</b>
+                                </span>
+                            </template>
+                        </template>
+
+                        <span class="vs-select-caret">&#9662;</span>
+                    </div>
+
+                    <div
+                        v-if="open"
+                        class="vs-select-menu"
+                    >
+                        <input
+                            v-model="search"
+                            type="text"
+                            class="vs-select-search"
+                            :placeholder="texts.search"
+                            @click.stop
+                        >
+
+                        <div
+                            v-if="loading"
+                            class="vs-select-empty"
+                            v-text="texts.loading"
+                        ></div>
+
+                        <div
+                            v-else-if="error"
+                            class="vs-select-empty"
+                            style="color: #dc2626"
+                        >
+                            <span v-text="error"></span>
+
+                            <button
+                                type="button"
+                                class="vs-link"
+                                @click.stop="$emit('load', true)"
+                                v-text="texts.retry"
+                            ></button>
+                        </div>
+
+                        <div
+                            v-else-if="! filtered.length"
+                            class="vs-select-empty"
+                            v-text="texts.no_options"
+                        ></div>
+
+                        <div
+                            v-for="(option, index) in filtered"
+                            :key="index"
+                            class="vs-option"
+                            :class="{ selected: isSelected(option) }"
+                            @click.stop="pick(option)"
+                        >
+                            <input
+                                v-if="multiple"
+                                type="checkbox"
+                                tabindex="-1"
+                                style="pointer-events: none"
+                                :checked="isSelected(option)"
+                            >
+
+                            <span v-text="option.label"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <button
+                    v-if="allowCustom"
+                    type="button"
+                    class="vs-link"
+                    @click="manual = ! manual"
+                    v-text="manual ? texts.choose_from_list : (customLabel || texts.enter_manually)"
+                ></button>
+            </div>
+        </script>
+
+        <script
+            type="text/x-template"
+            id="v-vs-editor-template"
+        >
+            <div>
+                <v-vs-select
+                    v-if="kind === 'choice' || kind === 'boolean'"
+                    :model-value="modelValue"
+                    :options="kind === 'boolean' ? booleanOptions : options"
+                    :multiple="block.type === 'multiselect'"
+                    :placeholder="block.placeholder"
+                    :loading="loading"
+                    :error="error"
+                    :disabled="disabled"
+                    :allow-custom="kind === 'choice' && !! (block.customInputLabel || block.customPlaceholder)"
+                    :custom-label="block.customInputLabel"
+                    :custom-placeholder="block.customPlaceholder"
+                    :texts="texts"
+                    @update:model-value="$emit('update:modelValue', $event)"
+                    @load="$emit('load', $event)"
+                ></v-vs-select>
+
+                <textarea
+                    v-else-if="kind === 'textarea'"
+                    rows="5"
+                    class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                    :value="modelValue"
+                    :placeholder="block.placeholder"
+                    @input="$emit('update:modelValue', $event.target.value)"
+                ></textarea>
+
+                <div
+                    v-else-if="kind === 'dictionary'"
+                    class="vs-rows"
+                >
+                    <div
+                        v-for="(row, index) in rows"
+                        :key="index"
+                        class="vs-row"
+                    >
+                        <input
+                            type="text"
+                            class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                            :value="row.k"
+                            :placeholder="texts.key"
+                            @input="row.k = $event.target.value; emitRows()"
+                        >
+
+                        <input
+                            type="text"
+                            class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                            :value="row.v"
+                            :placeholder="texts.value"
+                            @input="row.v = $event.target.value; emitRows()"
+                        >
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="rows.splice(index, 1); emitRows()"
+                            v-text="texts.remove"
+                        ></button>
+                    </div>
+
+                    <div>
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="rows.push({ k: '', v: '' })"
+                            v-text="texts.add_row"
+                        ></button>
+                    </div>
+                </div>
+
+                <div
+                    v-else-if="kind === 'sourceGroup'"
+                    class="vs-rows"
+                >
+                    <p
+                        v-if="loading"
+                        class="vs-hint"
+                        v-text="texts.loading"
+                    ></p>
+
+                    <p
+                        v-else-if="error"
+                        class="vs-hint"
+                        style="color: #dc2626"
+                        v-text="error"
+                    ></p>
+
+                    <div
+                        v-for="option in options"
+                        :key="String(option.value)"
+                    >
+                        <label
+                            class="mb-1 block text-xs text-gray-600 dark:text-gray-300"
+                            v-text="option.label"
+                        ></label>
+
+                        <input
+                            type="text"
+                            class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                            :value="(modelValue || {})[option.value]"
+                            @input="setGroupValue(option.value, $event.target.value)"
+                        >
+                    </div>
+                </div>
+
+                <div
+                    v-else-if="kind === 'list'"
+                    class="vs-rows"
+                >
+                    <div
+                        v-for="(item, index) in (modelValue || [])"
+                        :key="index"
+                        class="vs-row"
+                    >
+                        <v-vs-editor
+                            :block="rowBlock"
+                            :model-value="item"
+                            :options="options"
+                            :loading="loading"
+                            :error="error"
+                            :disabled="disabled"
+                            :texts="texts"
+                            @update:model-value="setRow(index, $event)"
+                            @load="$emit('load', $event)"
+                        ></v-vs-editor>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="removeRow(index)"
+                            v-text="texts.remove"
+                        ></button>
+                    </div>
+
+                    <div>
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="addRow"
+                            v-text="texts.add_row"
+                        ></button>
+                    </div>
+                </div>
+
+                <input
+                    v-else
+                    class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
+                    :type="kind === 'number' ? 'number' : (kind === 'date' ? 'date' : 'text')"
+                    :value="modelValue"
+                    :placeholder="block.placeholder"
+                    @input="onInput($event.target.value)"
+                >
+            </div>
+        </script>
 
         <script
             type="text/x-template"
@@ -810,14 +1112,18 @@
                         ></p>
                     </template>
 
-                    <!-- Connect -->
-                    <template v-else-if="picker.stage === 'connect'">
-                        <p
-                            class="text-gray-600 dark:text-gray-300"
-                            v-text="messages.ui.connect_to_continue.replace(':name', picker.app.name)"
-                        ></p>
+                    <!-- Fields -->
+                    <form
+                        v-else-if="picker.stage === 'form'"
+                        class="flex flex-col gap-4"
+                        @submit.prevent="confirmForm"
+                    >
+                        <div
+                            v-if="! picker.app.connected"
+                            class="vs-banner"
+                        >
+                            <span v-text="messages.ui.connect_banner.replace(':name', picker.app.name)"></span>
 
-                        <div>
                             <button
                                 type="button"
                                 class="primary-button"
@@ -825,14 +1131,7 @@
                                 v-text="messages.ui.connect.replace(':name', picker.app.name)"
                             ></button>
                         </div>
-                    </template>
 
-                    <!-- Fields -->
-                    <form
-                        v-else-if="picker.stage === 'form'"
-                        class="flex flex-col gap-4"
-                        @submit.prevent="confirmForm"
-                    >
                         <template
                             v-for="field in fields"
                             :key="field.key"
@@ -882,68 +1181,22 @@
                                     </select>
                                 </label>
 
-                                <select
-                                    v-if="isChoice(field.block)"
-                                    :multiple="field.block.type == 'multiselect'"
-                                    :value="picker.values[field.key]"
-                                    class="custom-select w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400"
-                                    @focus="loadOptions(field.key)"
-                                    @change="onSelect(field, $event)"
-                                >
-                                    <option
-                                        v-if="field.block.type != 'multiselect'"
-                                        value=""
-                                        v-text="picker.loading[field.key] ? messages.ui.loading : (field.block.placeholder || messages.ui.select)"
-                                    ></option>
-
-                                    <option
-                                        v-for="option in choicesOf(field)"
-                                        :key="String(option.value)"
-                                        :value="option.value"
-                                        :selected="isSelected(field.key, option.value)"
-                                        v-text="option.label"
-                                    ></option>
-                                </select>
-
-                                <select
-                                    v-else-if="field.block.type == 'boolean'"
-                                    :value="picker.values[field.key]"
-                                    class="custom-select w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400"
-                                    @change="setValue(field, $event.target.value === '' ? '' : $event.target.value === 'true')"
-                                >
-                                    <option value="" v-text="messages.ui.select"></option>
-                                    <option :value="true" v-text="messages.ui.yes"></option>
-                                    <option :value="false" v-text="messages.ui.no"></option>
-                                </select>
-
-                                <textarea
-                                    v-else-if="isLongText(field.block)"
-                                    rows="5"
-                                    :value="picker.values[field.key]"
-                                    :placeholder="field.block.placeholder"
-                                    class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
-                                    @input="setValue(field, $event.target.value)"
-                                ></textarea>
-
-                                <input
-                                    v-else
-                                    :type="inputType(field.block)"
-                                    :value="picker.values[field.key]"
-                                    :placeholder="field.block.placeholder"
-                                    class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
-                                    @input="setValue(field, $event.target.value)"
-                                >
+                                <v-vs-editor
+                                    :block="field.block"
+                                    :model-value="picker.values[field.key]"
+                                    :options="choicesOf(field)"
+                                    :loading="!! picker.loading[field.key]"
+                                    :error="picker.optionErrors[field.key] || ''"
+                                    :disabled="needsConnection(field)"
+                                    :texts="messages.ui"
+                                    @update:model-value="setValue(field, $event)"
+                                    @load="loadOptions(field.key, $event)"
+                                ></v-vs-editor>
 
                                 <p
                                     v-if="field.block.help"
                                     class="mt-1 text-xs text-gray-600 dark:text-gray-300"
                                     v-text="field.block.help"
-                                ></p>
-
-                                <p
-                                    v-if="picker.optionErrors[field.key]"
-                                    class="mt-1 text-xs text-red-600"
-                                    v-text="picker.optionErrors[field.key]"
                                 ></p>
                             </div>
                         </template>
@@ -1006,6 +1259,198 @@
 
                 return out;
             };
+
+            const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+            app.component('v-vs-select', {
+                template: '#v-vs-select-template',
+
+                props: ['modelValue', 'options', 'multiple', 'placeholder', 'loading', 'error', 'disabled', 'allowCustom', 'customLabel', 'customPlaceholder', 'texts'],
+
+                emits: ['update:modelValue', 'load'],
+
+                data() {
+                    return {
+                        open: false,
+
+                        search: '',
+
+                        manual: false,
+
+                        manualText: Array.isArray(this.modelValue) ? JSON.stringify(this.modelValue) : String(this.modelValue ?? ''),
+                    };
+                },
+
+                computed: {
+                    list() {
+                        return this.options || [];
+                    },
+
+                    filtered() {
+                        const term = this.search.trim().toLowerCase();
+
+                        return term ? this.list.filter((option) => String(option.label).toLowerCase().includes(term)) : this.list;
+                    },
+
+                    selectedLabels() {
+                        const values = this.multiple ? (Array.isArray(this.modelValue) ? this.modelValue : []) : (this.modelValue === undefined || this.modelValue === null || this.modelValue === '' ? [] : [this.modelValue]);
+
+                        return values.map((value) => this.list.find((option) => same(option.value, value))?.label ?? String(value));
+                    },
+                },
+
+                mounted() {
+                    document.addEventListener('click', this.onOutside);
+                },
+
+                beforeUnmount() {
+                    document.removeEventListener('click', this.onOutside);
+                },
+
+                methods: {
+                    onOutside(event) {
+                        if (! this.$el.contains(event.target)) {
+                            this.open = false;
+                        }
+                    },
+
+                    toggle() {
+                        if (this.disabled) {
+                            return;
+                        }
+
+                        this.open = ! this.open;
+                        this.search = '';
+
+                        if (this.open) {
+                            this.$emit('load', false);
+                        }
+                    },
+
+                    isSelected(option) {
+                        return this.multiple
+                            ? (Array.isArray(this.modelValue) ? this.modelValue : []).some((value) => same(value, option.value))
+                            : same(this.modelValue, option.value);
+                    },
+
+                    pick(option) {
+                        if (! this.multiple) {
+                            this.$emit('update:modelValue', option.value);
+                            this.open = false;
+
+                            return;
+                        }
+
+                        const current = Array.isArray(this.modelValue) ? this.modelValue : [];
+
+                        this.$emit('update:modelValue', this.isSelected(option) ? current.filter((value) => ! same(value, option.value)) : [...current, option.value]);
+                    },
+
+                    remove(index) {
+                        this.$emit('update:modelValue', (this.modelValue || []).filter((value, position) => position !== index));
+                    },
+
+                    onManual(text) {
+                        this.manualText = text;
+
+                        if (! this.multiple) {
+                            this.$emit('update:modelValue', text);
+
+                            return;
+                        }
+
+                        let parsed = null;
+
+                        if (text.trim().startsWith('[')) {
+                            try {
+                                parsed = JSON.parse(text);
+                            } catch (exception) {
+                                parsed = null;
+                            }
+                        }
+
+                        this.$emit('update:modelValue', parsed ?? text.split(',').map((item) => item.trim()).filter(Boolean));
+                    },
+                },
+            });
+
+            app.component('v-vs-editor', {
+                template: '#v-vs-editor-template',
+
+                props: ['block', 'modelValue', 'options', 'loading', 'error', 'disabled', 'texts'],
+
+                emits: ['update:modelValue', 'load'],
+
+                data() {
+                    return {
+                        rows: Object.entries(this.modelValue && ! Array.isArray(this.modelValue) && typeof this.modelValue === 'object' ? this.modelValue : {}).map(([k, v]) => ({ k, v })),
+
+                        booleanOptions: [{ label: this.texts.yes, value: true }, { label: this.texts.no, value: false }],
+                    };
+                },
+
+                computed: {
+                    kind() {
+                        const block = this.block;
+
+                        if (block.list && block.type !== 'dictionary') {
+                            return 'list';
+                        }
+
+                        if (block.type === 'dictionary') {
+                            return 'dictionary';
+                        }
+
+                        if (block.type === 'input groups' && block.source) {
+                            return 'sourceGroup';
+                        }
+
+                        if (block.type === 'dropdown' || block.type === 'multiselect') {
+                            return 'choice';
+                        }
+
+                        if (['aifield', 'html', 'markdown'].includes(block.type)) {
+                            return 'textarea';
+                        }
+
+                        return ['boolean', 'number', 'date'].includes(block.type) ? block.type : 'string';
+                    },
+
+                    rowBlock() {
+                        return { ...this.block, list: false };
+                    },
+                },
+
+                methods: {
+                    onInput(text) {
+                        this.$emit('update:modelValue', this.kind === 'number' && text !== '' ? Number(text) : text);
+                    },
+
+                    emitRows() {
+                        this.$emit('update:modelValue', Object.fromEntries(this.rows.filter((row) => row.k !== '').map((row) => [row.k, row.v])));
+                    },
+
+                    setGroupValue(key, text) {
+                        const next = { ...(this.modelValue || {}) };
+
+                        text === '' ? delete next[key] : next[key] = text;
+
+                        this.$emit('update:modelValue', next);
+                    },
+
+                    addRow() {
+                        this.$emit('update:modelValue', [...(this.modelValue || []), this.block.type === 'boolean' ? false : '']);
+                    },
+
+                    setRow(index, value) {
+                        this.$emit('update:modelValue', (this.modelValue || []).map((item, position) => position === index ? value : item));
+                    },
+
+                    removeRow(index) {
+                        this.$emit('update:modelValue', (this.modelValue || []).filter((item, position) => position !== index));
+                    },
+                },
+            });
 
             app.component('v-integrations', {
                 template: '#v-integrations-template',
@@ -1580,7 +2025,7 @@
                     },
 
                     back() {
-                        const stages = { events: 'apps', schedule: 'apps', items: 'apps', connect: 'items', form: 'items' };
+                        const stages = { events: 'apps', schedule: 'apps', items: 'apps', form: 'items' };
 
                         if (this.picker.stage === 'apps') {
                             this.closePicker();
@@ -1664,12 +2109,6 @@
                         this.picker.item = item;
                         this.picker.values = { ...existing };
 
-                        if (! this.picker.app.connected) {
-                            this.picker.stage = 'connect';
-
-                            return;
-                        }
-
                         await this.loadSchema();
                     },
 
@@ -1713,8 +2152,10 @@
 
                         this.error = '';
                         this.picker.app.connected = true;
+                        this.picker.options = {};
+                        this.picker.optionErrors = {};
 
-                        await this.loadSchema();
+                        this.preloadOptions();
                     },
 
                     async loadSchema() {
@@ -1742,6 +2183,12 @@
 
                     confirmForm() {
                         this.error = '';
+
+                        if (! this.picker.app.connected) {
+                            this.error = this.messages.ui.connect_first.replace(':name', this.picker.app.name);
+
+                            return;
+                        }
 
                         const missing = this.ordered.find((field) => ! field.group && field.block.required && this.state.visible[field.key] && ! this.hasValue(field.key));
 
@@ -1786,7 +2233,9 @@
                     hasValue(key) {
                         const value = this.picker?.values[key];
 
-                        return value !== undefined && value !== null && value !== '' && ! (Array.isArray(value) && ! value.length);
+                        return value !== undefined && value !== null && value !== ''
+                            && ! (Array.isArray(value) && ! value.length)
+                            && ! (typeof value === 'object' && ! Array.isArray(value) && ! Object.keys(value).length);
                     },
 
                     isEarned(field) {
@@ -1795,43 +2244,26 @@
                         return block.required || (block.dependsOn || []).length || block.visibilityCondition || this.hasValue(field.key) || field.group;
                     },
 
-                    isChoice(block) {
-                        return block.type === 'dropdown' || block.type === 'multiselect';
+                    needsOptions(block) {
+                        return block.type === 'dropdown' || block.type === 'multiselect' || (block.type === 'input groups' && !! block.source);
                     },
 
-                    isLongText(block) {
-                        return ['aifield', 'html', 'markdown', 'dictionary'].includes(block.type) || block.list;
+                    needsConnection(field) {
+                        return ! this.picker.app.connected && this.needsOptions(field.block) && ! field.block.options;
                     },
 
                     isText(block) {
                         return ['string', 'aifield', 'html', 'markdown'].includes(block.type) && ! block.list;
                     },
 
-                    inputType(block) {
-                        return block.type === 'number' ? 'number' : (block.type === 'date' ? 'date' : 'text');
-                    },
-
                     choicesOf(field) {
                         return field.block.options || this.picker.options[field.key] || [];
                     },
 
-                    isSelected(key, value) {
-                        const current = this.picker.values[key];
-
-                        return Array.isArray(current) ? current.includes(value) : current === value;
-                    },
-
                     setValue(field, value) {
-                        this.picker.values[field.key] = field.block.type === 'number' && value !== '' ? Number(value) : value;
+                        this.picker.values[field.key] = value;
 
                         this.clearDependents(field.key);
-                    },
-
-                    onSelect(field, event) {
-                        const chosen = [...event.target.selectedOptions].map((option) => option._value ?? option.value);
-
-                        this.setValue(field, field.block.type === 'multiselect' ? chosen.filter((item) => item !== '') : (chosen[0] ?? ''));
-
                         this.preloadOptions();
                     },
 
@@ -1864,18 +2296,18 @@
                             }
 
                             this.ordered.forEach((field) => {
-                                if (! field.group && this.isChoice(field.block) && this.state.visible[field.key]) {
+                                if (! field.group && this.needsOptions(field.block) && this.state.visible[field.key]) {
                                     this.loadOptions(field.key);
                                 }
                             });
                         });
                     },
 
-                    async loadOptions(key) {
+                    async loadOptions(key, force = false) {
                         const picker = this.picker;
                         const block = picker.schema.blocks[key];
 
-                        if (block.options || picker.options[key] || picker.loading[key]) {
+                        if (block.options || ! picker.app.connected || picker.loading[key] || (picker.options[key] && ! force)) {
                             return;
                         }
 
