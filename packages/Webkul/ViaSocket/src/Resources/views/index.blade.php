@@ -5,6 +5,69 @@
 
     <v-integrations></v-integrations>
 
+    @pushOnce('styles')
+        <style>
+            .vs-card, .vs-flow, .vs-panel, .vs-empty, .vs-bar { border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+            .vs-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+            .vs-panel { padding: 16px; }
+            .vs-flow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; }
+            .vs-flow-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+            .vs-flow-actions { display: flex; align-items: center; gap: 8px; }
+            .vs-list { display: flex; flex-direction: column; gap: 12px; }
+            .vs-chain { display: flex; align-items: center; gap: 6px; flex: none; }
+            .vs-chain-sep { color: #9ca3af; font-size: 14px; }
+            .vs-icon { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; background: #f3f4f6; padding: 3px; flex: none; }
+            .vs-letter { display: inline-flex; align-items: center; justify-content: center; background: #0e90d9; color: #fff; font-weight: 600; font-size: 13px; padding: 0; }
+            .vs-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
+            .vs-pill::before { content: ''; width: 8px; height: 8px; border-radius: 9999px; background: #9ca3af; }
+            .vs-pill.on { color: #15803d; }
+            .vs-pill.on::before { background: #22c55e; }
+            .vs-switch { position: relative; width: 38px; height: 22px; border-radius: 9999px; border: 0; background: #d1d5db; cursor: pointer; transition: background .15s; flex: none; }
+            .vs-switch span { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 9999px; background: #fff; transition: left .15s; }
+            .vs-switch.on { background: #22c55e; }
+            .vs-switch.on span { left: 19px; }
+            .vs-switch:disabled { opacity: .6; cursor: default; }
+            .vs-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 16px; text-align: center; }
+            .vs-ideas { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+            .vs-chip { border: 1px solid #d1d5db; border-radius: 9999px; padding: 4px 12px; font-size: 12px; color: #6b7280; }
+            .vs-timeline { display: flex; flex-direction: column; }
+            .vs-step { display: flex; gap: 14px; }
+            .vs-rail { display: flex; flex-direction: column; align-items: center; width: 32px; flex: none; }
+            .vs-badge { width: 32px; height: 32px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: #0e90d9; color: #fff; flex: none; }
+            .vs-badge.muted { background: #e5e7eb; color: #6b7280; }
+            .vs-line { width: 2px; flex: 1; min-height: 20px; background: #d1d5db; margin: 4px 0; }
+            .vs-body { flex: 1; min-width: 0; padding-bottom: 16px; }
+            .vs-label { margin: 6px 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+            .vs-title { font-size: 14px; font-weight: 600; color: #1f2937; }
+            .vs-sub { font-size: 12px; color: #6b7280; }
+            .vs-grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+            .vs-add { width: 100%; text-align: left; border: 1px dashed #9ca3af; border-radius: 8px; padding: 12px 14px; font-size: 14px; color: #0e90d9; background: transparent; cursor: pointer; }
+            .vs-add:hover { background: rgba(14, 144, 217, .06); }
+            .vs-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+            .vs-hint { font-size: 13px; color: #6b7280; }
+            .vs-hint.ready { color: #15803d; }
+            .vs-actions { display: flex; align-items: center; gap: 8px; }
+            .vs-tile { display: flex; align-items: center; gap: 10px; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; text-align: left; background: transparent; cursor: pointer; transition: border-color .15s, background .15s; }
+            .vs-tile:hover { border-color: #0e90d9; background: rgba(14, 144, 217, .06); }
+            .vs-tile-text { display: flex; flex-direction: column; min-width: 0; }
+            .vs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+            @media (max-width: 900px) { .vs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vs-flow { flex-direction: column; align-items: flex-start; } }
+            .vs-stepper { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9ca3af; }
+            .vs-stepper b { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 9999px; background: #e5e7eb; color: #6b7280; font-size: 12px; margin-right: 4px; }
+            .vs-stepper .active { color: #1f2937; font-weight: 600; }
+            .vs-stepper .active b, .vs-stepper .done b { background: #0e90d9; color: #fff; }
+            .vs-stepper .done { color: #6b7280; }
+            .vs-stepper i { color: #d1d5db; font-style: normal; }
+            .vs-toast { position: fixed; top: 76px; right: 24px; z-index: 50; padding: 10px 16px; border-radius: 8px; background: #166534; color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .2); }
+            html.dark .vs-card, html.dark .vs-flow, html.dark .vs-panel, html.dark .vs-empty, html.dark .vs-bar { background: #111827; border-color: #1f2937; }
+            html.dark .vs-title { color: #f3f4f6; }
+            html.dark .vs-icon { background: #1f2937; }
+            html.dark .vs-line { background: #374151; }
+            html.dark .vs-tile, html.dark .vs-chip, html.dark .vs-add { border-color: #374151; }
+            html.dark .vs-stepper .active { color: #f3f4f6; }
+        </style>
+    @endPushOnce
+
     @pushOnce('scripts')
         <script src="{{ $connectScript }}"></script>
 
@@ -13,6 +76,12 @@
             id="v-integrations-template"
         >
             <div class="flex flex-col gap-4">
+                <div
+                    v-if="toast"
+                    class="vs-toast"
+                    v-text="toast"
+                ></div>
+
                 <div class="flex items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
                     <div class="flex flex-col gap-1">
                         <div
@@ -45,14 +114,19 @@
                 <template v-if="view === 'list'">
                     <div
                         v-if="! loaded"
-                        class="rounded-lg border border-gray-300 bg-white p-4 text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        class="vs-panel text-gray-600 dark:text-gray-300"
                         v-text="messages.ui.loading"
                     ></div>
 
                     <div
                         v-else-if="! flows.length"
-                        class="flex flex-col items-center gap-3 rounded-lg border border-gray-300 bg-white p-10 text-center dark:border-gray-800 dark:bg-gray-900"
+                        class="vs-empty"
                     >
+                        <span
+                            class="icon-settings-webhooks"
+                            style="font-size: 44px; color: #0e90d9"
+                        ></span>
+
                         <p
                             class="text-lg font-semibold text-gray-800 dark:text-white"
                             v-text="messages.ui.empty_title"
@@ -69,36 +143,81 @@
                             @click="newFlow"
                             v-text="messages.ui.start"
                         ></button>
+
+                        <div class="vs-ideas">
+                            <span
+                                v-for="idea in messages.ui.ideas"
+                                :key="idea"
+                                class="vs-chip"
+                                v-text="idea"
+                            ></span>
+                        </div>
                     </div>
 
                     <div
                         v-else
-                        class="flex flex-col gap-3"
+                        class="vs-list"
                     >
                         <div
                             v-for="flow in flows"
                             :key="flow.id"
-                            class="flex items-center justify-between gap-4 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+                            class="vs-flow"
                         >
-                            <div class="flex flex-col gap-1">
-                                <p
-                                    class="font-semibold text-gray-800 dark:text-white"
-                                    v-text="flow.title"
-                                ></p>
+                            <div class="vs-chain">
+                                <template
+                                    v-for="(node, position) in chain(flow)"
+                                    :key="position"
+                                >
+                                    <span
+                                        v-if="position"
+                                        class="vs-chain-sep"
+                                    >&rsaquo;</span>
 
-                                <p
-                                    class="text-xs text-gray-600 dark:text-gray-300"
-                                    v-text="summary(flow)"
-                                ></p>
+                                    <img
+                                        v-if="node.icon"
+                                        :src="node.icon"
+                                        alt=""
+                                        class="vs-icon"
+                                    >
+
+                                    <span
+                                        v-else
+                                        class="vs-icon vs-letter"
+                                        v-text="node.letter"
+                                    ></span>
+                                </template>
+                            </div>
+
+                            <div class="vs-flow-main">
+                                <span
+                                    class="vs-title"
+                                    v-text="flow.title"
+                                ></span>
 
                                 <span
-                                    class="text-xs"
-                                    :class="flow.status === 'active' ? 'text-green-600' : 'text-gray-500'"
+                                    class="vs-sub"
+                                    v-text="summary(flow)"
+                                ></span>
+
+                                <span
+                                    class="vs-pill"
+                                    :class="{ on: flow.status === 'active' }"
                                     v-text="flow.status === 'active' ? messages.ui.active : messages.ui.paused"
                                 ></span>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="vs-flow-actions">
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    class="vs-switch"
+                                    :class="{ on: flow.status === 'active' }"
+                                    :aria-checked="flow.status === 'active'"
+                                    :title="flow.status === 'active' ? messages.ui.pause : messages.ui.resume"
+                                    :disabled="busy"
+                                    @click="toggleFlow(flow)"
+                                ><span></span></button>
+
                                 <button
                                     type="button"
                                     class="secondary-button"
@@ -118,14 +237,6 @@
                                     type="button"
                                     class="secondary-button"
                                     :disabled="busy"
-                                    @click="toggleFlow(flow)"
-                                    v-text="flow.status === 'active' ? messages.ui.pause : messages.ui.resume"
-                                ></button>
-
-                                <button
-                                    type="button"
-                                    class="secondary-button"
-                                    :disabled="busy"
                                     @click="removeFlow(flow)"
                                     v-text="messages.ui.delete"
                                 ></button>
@@ -137,9 +248,9 @@
                 <!-- Builder -->
                 <div
                     v-else-if="! picker"
-                    class="flex flex-col gap-6 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+                    class="flex flex-col gap-4"
                 >
-                    <div>
+                    <div class="vs-panel">
                         <label
                             class="mb-1.5 flex items-center gap-1 text-sm font-normal text-gray-800 dark:text-white"
                             v-text="messages.ui.flow_title"
@@ -153,96 +264,180 @@
                         >
                     </div>
 
-                    <div>
-                        <p
-                            class="mb-2 font-semibold text-gray-600 dark:text-gray-300"
-                            v-text="messages.ui.trigger"
-                        ></p>
+                    <div class="vs-panel">
+                        <div class="vs-timeline">
+                            <div class="vs-step">
+                                <div class="vs-rail">
+                                    <span class="vs-badge">1</span>
 
-                        <div
-                            v-if="draft.trigger"
-                            class="flex items-center justify-between rounded border border-gray-300 p-3 dark:border-gray-800"
-                        >
-                            <span
-                                class="text-sm text-gray-800 dark:text-white"
-                                v-text="draft.trigger.label"
-                            ></span>
+                                    <span
+                                        v-if="draft.trigger"
+                                        class="vs-line"
+                                    ></span>
+                                </div>
 
-                            <button
-                                type="button"
-                                class="secondary-button"
-                                @click="openPicker('trigger')"
-                                v-text="messages.ui.change"
-                            ></button>
-                        </div>
+                                <div class="vs-body">
+                                    <p
+                                        class="vs-label"
+                                        v-text="messages.ui.trigger"
+                                    ></p>
 
-                        <button
-                            v-else
-                            type="button"
-                            class="primary-button"
-                            @click="openPicker('trigger')"
-                            v-text="messages.ui.choose_trigger"
-                        ></button>
-                    </div>
+                                    <div
+                                        v-if="draft.trigger"
+                                        class="vs-card"
+                                    >
+                                        <img
+                                            v-if="draft.trigger.icon"
+                                            :src="draft.trigger.icon"
+                                            alt=""
+                                            class="vs-icon"
+                                        >
 
-                    <div v-if="draft.trigger">
-                        <p
-                            class="mb-2 font-semibold text-gray-600 dark:text-gray-300"
-                            v-text="messages.ui.actions"
-                        ></p>
+                                        <span
+                                            v-else
+                                            class="vs-icon vs-letter"
+                                            v-text="draft.trigger.kind === 'schedule' ? 'S' : 'K'"
+                                        ></span>
 
-                        <div class="mb-3 flex flex-col gap-2">
+                                        <span class="vs-grow">
+                                            <span
+                                                class="vs-title"
+                                                v-text="entryTitle(draft.trigger)"
+                                            ></span>
+
+                                            <span
+                                                class="vs-sub"
+                                                v-text="entrySubtitle(draft.trigger)"
+                                            ></span>
+                                        </span>
+
+                                        <button
+                                            type="button"
+                                            class="secondary-button"
+                                            @click="openPicker('trigger')"
+                                            v-text="messages.ui.change"
+                                        ></button>
+                                    </div>
+
+                                    <button
+                                        v-else
+                                        type="button"
+                                        class="vs-add"
+                                        @click="openPicker('trigger')"
+                                        v-text="'+  ' + messages.ui.choose_trigger"
+                                    ></button>
+                                </div>
+                            </div>
+
                             <div
                                 v-for="(step, index) in draft.steps"
                                 :key="index"
-                                class="flex items-center justify-between rounded border border-gray-300 p-3 dark:border-gray-800"
+                                class="vs-step"
                             >
-                                <span
-                                    class="text-sm text-gray-800 dark:text-white"
-                                    v-text="(index + 1) + '. ' + step.app_name + ' - ' + step.name"
-                                ></span>
+                                <div class="vs-rail">
+                                    <span
+                                        class="vs-badge"
+                                        v-text="index + 2"
+                                    ></span>
 
-                                <span class="flex gap-2">
+                                    <span class="vs-line"></span>
+                                </div>
+
+                                <div class="vs-body">
+                                    <p
+                                        v-if="index === 0"
+                                        class="vs-label"
+                                        v-text="messages.ui.actions"
+                                    ></p>
+
+                                    <div class="vs-card">
+                                        <img
+                                            v-if="step.icon"
+                                            :src="step.icon"
+                                            alt=""
+                                            class="vs-icon"
+                                        >
+
+                                        <span class="vs-grow">
+                                            <span
+                                                class="vs-title"
+                                                v-text="step.name"
+                                            ></span>
+
+                                            <span
+                                                class="vs-sub"
+                                                v-text="step.app_name"
+                                            ></span>
+                                        </span>
+
+                                        <span class="vs-actions">
+                                            <button
+                                                type="button"
+                                                class="secondary-button"
+                                                @click="openPicker('action', index)"
+                                                v-text="messages.ui.edit"
+                                            ></button>
+
+                                            <button
+                                                type="button"
+                                                class="secondary-button"
+                                                @click="draft.steps.splice(index, 1)"
+                                                v-text="messages.ui.delete"
+                                            ></button>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="draft.trigger"
+                                class="vs-step"
+                            >
+                                <div class="vs-rail">
+                                    <span class="vs-badge muted">+</span>
+                                </div>
+
+                                <div class="vs-body">
+                                    <p
+                                        v-if="! draft.steps.length"
+                                        class="vs-label"
+                                        v-text="messages.ui.actions"
+                                    ></p>
+
                                     <button
                                         type="button"
-                                        class="secondary-button"
-                                        @click="openPicker('action', index)"
-                                        v-text="messages.ui.edit"
+                                        class="vs-add"
+                                        @click="openPicker('action')"
+                                        v-text="'+  ' + messages.ui.add_action"
                                     ></button>
-
-                                    <button
-                                        type="button"
-                                        class="secondary-button"
-                                        @click="draft.steps.splice(index, 1)"
-                                        v-text="messages.ui.delete"
-                                    ></button>
-                                </span>
+                                </div>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            class="secondary-button"
-                            @click="openPicker('action')"
-                            v-text="messages.ui.add_action"
-                        ></button>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <button
-                            type="button"
-                            class="primary-button"
-                            :disabled="busy"
-                            @click="saveFlow"
-                            v-text="draft.id ? messages.ui.update : messages.ui.publish"
-                        ></button>
+                    <div class="vs-bar">
+                        <span
+                            class="vs-hint"
+                            :class="{ ready: ! publishHint }"
+                            v-text="publishHint || messages.ui.hint_ready"
+                        ></span>
 
-                        <button
-                            type="button"
-                            class="secondary-button"
-                            @click="view = 'list'; error = ''"
-                            v-text="messages.ui.cancel"
-                        ></button>
+                        <span class="vs-actions">
+                            <button
+                                type="button"
+                                class="secondary-button"
+                                @click="cancelBuilder"
+                                v-text="messages.ui.cancel"
+                            ></button>
+
+                            <button
+                                type="button"
+                                class="primary-button"
+                                :disabled="busy || !! publishHint"
+                                @click="saveFlow"
+                                v-text="busy ? messages.ui.publishing : (draft.id ? messages.ui.update : messages.ui.publish)"
+                            ></button>
+                        </span>
                     </div>
                 </div>
 
@@ -251,6 +446,19 @@
                     v-else
                     class="flex flex-col gap-4 rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
                 >
+                    <div class="vs-stepper">
+                        <template
+                            v-for="(label, position) in stepperLabels"
+                            :key="position"
+                        >
+                            <i v-if="position">&rsaquo;</i>
+
+                            <span :class="{ active: position === stepIndex, done: position < stepIndex }">
+                                <b v-text="position + 1"></b><span v-text="label"></span>
+                            </span>
+                        </template>
+                    </div>
+
                     <div class="flex items-center justify-between">
                         <p
                             class="font-semibold text-gray-800 dark:text-white"
@@ -290,32 +498,36 @@
                             v-text="messages.ui.loading"
                         ></p>
 
-                        <div class="grid grid-cols-3 gap-3 max-md:grid-cols-2">
+                        <div class="vs-grid">
                             <button
                                 v-for="app in picker.apps"
                                 :key="app.id"
                                 type="button"
-                                class="flex items-center gap-2 rounded-lg border border-gray-300 p-3 text-left transition-all hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-950"
+                                class="vs-tile"
                                 @click="chooseApp(app)"
                             >
                                 <img
                                     v-if="app.icon"
                                     :src="app.icon"
                                     alt=""
-                                    width="28"
-                                    height="28"
-                                    class="rounded"
+                                    class="vs-icon"
                                 >
 
-                                <span class="grid">
+                                <span
+                                    v-else
+                                    class="vs-icon vs-letter"
+                                    v-text="app.id === '__schedule__' ? 'S' : 'K'"
+                                ></span>
+
+                                <span class="vs-tile-text">
                                     <span
-                                        class="text-sm font-semibold text-gray-800 dark:text-white"
+                                        class="vs-title"
                                         v-text="app.name"
                                     ></span>
 
                                     <span
                                         v-if="app.special"
-                                        class="text-xs text-gray-600 dark:text-gray-300"
+                                        class="vs-sub"
                                         v-text="app.description"
                                     ></span>
                                 </span>
@@ -477,7 +689,7 @@
                                             v-for="path in variablePaths"
                                             :key="path"
                                             :value="path"
-                                            v-text="path"
+                                            v-text="pretty(path)"
                                         ></option>
                                     </select>
                                 </label>
@@ -612,6 +824,10 @@
 
                         searchTimer: null,
 
+                        toast: '',
+
+                        toastTimer: null,
+
                         messages: {!! json_encode(trans('viasocket::app'), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
 
                         krayinEvents: {!! json_encode($krayinEvents, JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
@@ -632,6 +848,32 @@
                 },
 
                 computed: {
+                    publishHint() {
+                        const ui = this.messages.ui;
+
+                        if (! this.draft.title.trim()) {
+                            return ui.hint_title;
+                        }
+
+                        if (! this.draft.trigger) {
+                            return ui.hint_trigger;
+                        }
+
+                        return this.draft.steps.length ? '' : ui.hint_action;
+                    },
+
+                    stepperLabels() {
+                        const ui = this.messages.ui;
+
+                        return [ui.step_app, this.picker.kind === 'trigger' ? ui.step_trigger : ui.step_action, ui.step_setup];
+                    },
+
+                    stepIndex() {
+                        const stage = this.picker.stage;
+
+                        return stage === 'apps' ? 0 : (['connect', 'form'].includes(stage) ? 2 : 1);
+                    },
+
                     pickerTitle() {
                         const ui = this.messages.ui;
                         const trigger = this.picker.kind === 'trigger';
@@ -790,6 +1032,44 @@
                         return flow.trigger.label + '  >  ' + steps;
                     },
 
+                    chain(flow) {
+                        const trigger = flow.trigger;
+
+                        const nodes = [{ icon: trigger.icon || null, letter: trigger.kind === 'schedule' ? 'S' : (trigger.kind === 'krayin' ? 'K' : (trigger.label || '?').charAt(0)) }];
+
+                        flow.steps.forEach((step) => nodes.push({ icon: step.icon || null, letter: (step.app_name || '?').charAt(0) }));
+
+                        return nodes;
+                    },
+
+                    entryTitle(trigger) {
+                        return trigger.name || (trigger.label || '').split(' - ').slice(1).join(' - ') || trigger.label;
+                    },
+
+                    entrySubtitle(trigger) {
+                        return trigger.kind === 'krayin' ? this.messages.ui.krayin : (trigger.kind === 'schedule' ? this.messages.ui.schedule : (trigger.label || '').split(' - ')[0]);
+                    },
+
+                    pretty(path) {
+                        return path.replace(/^data\./, '').split('.').map((part) => part.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase())).join(' \u203a ');
+                    },
+
+                    notify(message) {
+                        clearTimeout(this.toastTimer);
+
+                        this.toast = message;
+                        this.toastTimer = setTimeout(() => this.toast = '', 3000);
+                    },
+
+                    cancelBuilder() {
+                        if ((this.draft.trigger || this.draft.steps.length || this.draft.title.trim()) && ! window.confirm(this.messages.ui.leave_confirm)) {
+                            return;
+                        }
+
+                        this.view = 'list';
+                        this.error = '';
+                    },
+
                     async loadFlows() {
                         const response = await this.request(this.urls.flows);
 
@@ -848,6 +1128,8 @@
 
                         await this.loadFlows();
 
+                        this.notify(this.draft.id ? this.messages.ui.updated : this.messages.ui.published);
+
                         this.view = 'list';
                     },
 
@@ -859,7 +1141,13 @@
 
                         this.busy = false;
 
-                        response.ok ? await this.loadFlows() : this.fail(response);
+                        if (response.ok) {
+                            await this.loadFlows();
+
+                            this.notify(flow.status === 'active' ? this.messages.ui.paused_toast : this.messages.ui.resumed_toast);
+                        } else {
+                            this.fail(response);
+                        }
                     },
 
                     async removeFlow(flow) {
@@ -874,7 +1162,13 @@
 
                         this.busy = false;
 
-                        response.ok ? await this.loadFlows() : this.fail(response);
+                        if (response.ok) {
+                            await this.loadFlows();
+
+                            this.notify(this.messages.ui.deleted_toast);
+                        } else {
+                            this.fail(response);
+                        }
                     },
 
                     async loadToken() {
