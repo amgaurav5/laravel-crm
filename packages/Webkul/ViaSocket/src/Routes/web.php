@@ -31,6 +31,8 @@ Route::controller(FlowController::class)->prefix('flows')->group(function () {
 
     Route::put('{id}', 'update')->name('admin.integrations.flows.update');
 
+    Route::get('{id}/history', 'history')->name('admin.integrations.flows.history');
+
     Route::post('{id}/status', 'status')->name('admin.integrations.flows.status');
 
     Route::delete('{id}', 'destroy')->name('admin.integrations.flows.destroy');

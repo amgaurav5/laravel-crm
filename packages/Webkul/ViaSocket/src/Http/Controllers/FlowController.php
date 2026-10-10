@@ -4,10 +4,13 @@ namespace Webkul\ViaSocket\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\ViaSocket\Repositories\ViaSocketConnectionRepository;
 use Webkul\ViaSocket\Repositories\ViaSocketFlowRepository;
+use Webkul\ViaSocket\Repositories\ViaSocketFlowRunRepository;
 use Webkul\ViaSocket\Services\CatalogService;
 use Webkul\ViaSocket\Services\CodeBuilder;
 use Webkul\ViaSocket\Services\FlowService;
@@ -23,6 +26,7 @@ class FlowController extends Controller
         protected CodeBuilder $codeBuilder,
         protected CatalogService $catalogService,
         protected ViaSocketFlowRepository $viaSocketFlowRepository,
+        protected ViaSocketFlowRunRepository $viaSocketFlowRunRepository,
         protected ViaSocketConnectionRepository $viaSocketConnectionRepository,
     ) {}
 
@@ -54,6 +58,30 @@ class FlowController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         return $this->save($request, $this->owned($id));
+    }
+
+    /**
+     * The latest runs Krayin started for a flow.
+     */
+    public function history(int $id): JsonResponse
+    {
+        $flow = $this->owned($id);
+
+        $runs = $this->viaSocketFlowRunRepository
+            ->findWhere(['flow_id' => $flow->id])
+            ->sortByDesc('id')
+            ->take(30)
+            ->values()
+            ->map(fn ($run) => [
+                'id' => $run->id,
+                'event' => $run->event,
+                'ok' => $run->ok,
+                'status_code' => $run->status_code,
+                'message' => $run->message,
+                'at' => $run->created_at?->toDateTimeString(),
+            ]);
+
+        return response()->json(['runs' => $runs]);
     }
 
     /**
@@ -99,7 +127,8 @@ class FlowController extends Controller
      */
     protected function save(Request $request, $flow): JsonResponse
     {
-        $data = $request->validate([
+        try {
+            $data = $request->validate([
             'title' => ['required', 'string', 'max:120'],
             'trigger' => ['required', 'array'],
             'trigger.kind' => ['required', 'in:krayin,schedule,app'],
@@ -119,7 +148,12 @@ class FlowController extends Controller
             'steps.*.icon' => ['nullable', 'string', 'max:500'],
             'steps.*.values' => ['nullable', 'array'],
             'steps.*.fields' => ['nullable', 'array'],
-        ]);
+            ]);
+        } catch (ValidationException $exception) {
+            Log::warning('A flow could not be published: invalid request.', ['errors' => $exception->errors()]);
+
+            throw $exception;
+        }
 
         try {
             $remoteTrigger = $this->remoteTrigger($data['trigger']);
@@ -132,6 +166,8 @@ class FlowController extends Controller
 
             $scriptId = $this->flowService->publish($this->identifier(), $flow?->script_id, $data['title'], $remoteTrigger, $remoteSteps);
         } catch (Throwable $exception) {
+            Log::warning('A flow could not be published.', ['message' => $exception->getMessage()]);
+
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 

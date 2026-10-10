@@ -221,8 +221,7 @@
                                 <button
                                     type="button"
                                     class="secondary-button"
-                                    disabled
-                                    :title="messages.ui.history_soon"
+                                    @click="openHistory(flow)"
                                     v-text="messages.ui.history"
                                 ></button>
 
@@ -244,6 +243,80 @@
                         </div>
                     </div>
                 </template>
+
+                <!-- History -->
+                <div
+                    v-else-if="view === 'history'"
+                    class="flex flex-col gap-4"
+                >
+                    <div class="vs-bar">
+                        <span
+                            class="vs-title"
+                            v-text="messages.ui.history + ' - ' + historyFlow.title"
+                        ></span>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            @click="view = 'list'"
+                            v-text="messages.ui.back_to_flows"
+                        ></button>
+                    </div>
+
+                    <div class="vs-panel">
+                        <p
+                            v-if="historyFlow.trigger.kind !== 'krayin'"
+                            class="vs-hint"
+                            v-text="messages.ui.history_other"
+                        ></p>
+
+                        <p
+                            v-else-if="historyLoading"
+                            class="vs-hint"
+                            v-text="messages.ui.loading"
+                        ></p>
+
+                        <p
+                            v-else-if="! runs.length"
+                            class="vs-hint"
+                            v-text="messages.ui.history_empty"
+                        ></p>
+
+                        <div
+                            v-else
+                            class="vs-list"
+                        >
+                            <div
+                                v-for="run in runs"
+                                :key="run.id"
+                                class="vs-card"
+                            >
+                                <span
+                                    class="vs-pill"
+                                    :class="{ on: run.ok }"
+                                    v-text="run.ok ? messages.ui.success : messages.ui.failed"
+                                ></span>
+
+                                <span class="vs-grow">
+                                    <span
+                                        class="vs-title"
+                                        v-text="(krayinEvents[run.event] || {}).name || run.event"
+                                    ></span>
+
+                                    <span
+                                        class="vs-sub"
+                                        v-text="run.message || ''"
+                                    ></span>
+                                </span>
+
+                                <span
+                                    class="vs-sub"
+                                    v-text="run.at"
+                                ></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Builder -->
                 <div
@@ -296,7 +369,7 @@
                                         <span
                                             v-else
                                             class="vs-icon vs-letter"
-                                            v-text="draft.trigger.kind === 'schedule' ? 'S' : 'K'"
+                                            v-text="triggerLetter(draft.trigger)"
                                         ></span>
 
                                         <span class="vs-grow">
@@ -417,6 +490,14 @@
 
                     <div class="vs-bar">
                         <span
+                            v-if="error"
+                            class="vs-hint"
+                            style="color: #dc2626"
+                            v-text="error"
+                        ></span>
+
+                        <span
+                            v-else
                             class="vs-hint"
                             :class="{ ready: ! publishHint }"
                             v-text="publishHint || messages.ui.hint_ready"
@@ -516,7 +597,7 @@
                                 <span
                                     v-else
                                     class="vs-icon vs-letter"
-                                    v-text="app.id === '__schedule__' ? 'S' : 'K'"
+                                    v-text="app.special ? (app.id === '__schedule__' ? 'S' : 'K') : app.name.charAt(0)"
                                 ></span>
 
                                 <span class="vs-tile-text">
@@ -824,6 +905,12 @@
 
                         searchTimer: null,
 
+                        historyFlow: null,
+
+                        runs: [],
+
+                        historyLoading: false,
+
                         toast: '',
 
                         toastTimer: null,
@@ -843,6 +930,7 @@
                             flow: {!! json_encode(route('admin.integrations.flows.update', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                             status: {!! json_encode(route('admin.integrations.flows.status', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                             destroy: {!! json_encode(route('admin.integrations.flows.destroy', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
+                            history: {!! json_encode(route('admin.integrations.flows.history', ['id' => '__ID__']), JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
                         },
                     };
                 },
@@ -1040,6 +1128,28 @@
                         flow.steps.forEach((step) => nodes.push({ icon: step.icon || null, letter: (step.app_name || '?').charAt(0) }));
 
                         return nodes;
+                    },
+
+                    triggerLetter(trigger) {
+                        return trigger.kind === 'schedule' ? 'S' : (trigger.kind === 'krayin' ? 'K' : (this.entrySubtitle(trigger) || '?').charAt(0));
+                    },
+
+                    async openHistory(flow) {
+                        this.error = '';
+                        this.historyFlow = flow;
+                        this.runs = [];
+                        this.view = 'history';
+
+                        if (flow.trigger.kind !== 'krayin') {
+                            return;
+                        }
+
+                        this.historyLoading = true;
+
+                        const response = await this.request(this.url(this.urls.history, { ID: flow.id }));
+
+                        this.runs = response.ok ? response.data.runs : [];
+                        this.historyLoading = false;
                     },
 
                     entryTitle(trigger) {

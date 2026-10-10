@@ -17,6 +17,7 @@ return [
             'admin.integrations.flows.store',
             'admin.integrations.flows.update',
             'admin.integrations.flows.status',
+            'admin.integrations.flows.history',
             'admin.integrations.flows.destroy',
         ],
         'sort' => 7.5,

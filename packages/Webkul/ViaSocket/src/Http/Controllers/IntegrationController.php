@@ -139,7 +139,7 @@ class IntegrationController extends Controller
 
         $this->viaSocketConnectionRepository->updateOrCreate(
             ['user_id' => $this->userId(), 'service_id' => $data['service_id']],
-            ['auth_id' => $data['auth_id']]
+            ['auth_id' => $data['auth_id'], 'script_id' => null]
         );
 
         return response()->json(['ok' => true]);

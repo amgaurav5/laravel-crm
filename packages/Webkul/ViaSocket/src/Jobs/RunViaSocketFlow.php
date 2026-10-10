@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Webkul\ViaSocket\Repositories\ViaSocketFlowRepository;
+use Webkul\ViaSocket\Repositories\ViaSocketFlowRunRepository;
 
 class RunViaSocketFlow implements ShouldQueue
 {
@@ -28,7 +29,7 @@ class RunViaSocketFlow implements ShouldQueue
     /**
      * Post the payload to the flow. A failing flow is logged and never breaks the CRM.
      */
-    public function handle(ViaSocketFlowRepository $viaSocketFlowRepository): void
+    public function handle(ViaSocketFlowRepository $viaSocketFlowRepository, ViaSocketFlowRunRepository $viaSocketFlowRunRepository): void
     {
         $flow = $viaSocketFlowRepository->find($this->flowId);
 
@@ -41,10 +42,27 @@ class RunViaSocketFlow implements ShouldQueue
                 ->acceptJson()
                 ->post(config('viasocket.flow_url').'/'.$flow->script_id, $this->payload);
 
-            if ($response->failed()) {
+            $ok = $response->successful() && $response->json('success') !== false;
+
+            $viaSocketFlowRunRepository->create([
+                'flow_id' => $flow->id,
+                'event' => $this->payload['event'] ?? null,
+                'ok' => $ok,
+                'status_code' => $response->status(),
+                'message' => mb_substr((string) ($response->json('message') ?: $response->body()), 0, 500),
+            ]);
+
+            if (! $ok) {
                 Log::warning('An integration flow returned an error.', ['flow' => $flow->id, 'status' => $response->status()]);
             }
         } catch (Throwable $exception) {
+            $viaSocketFlowRunRepository->create([
+                'flow_id' => $flow->id,
+                'event' => $this->payload['event'] ?? null,
+                'ok' => false,
+                'message' => mb_substr($exception->getMessage(), 0, 500),
+            ]);
+
             Log::warning('An integration flow could not be reached.', ['flow' => $flow->id, 'error' => $exception->getMessage()]);
         }
     }
