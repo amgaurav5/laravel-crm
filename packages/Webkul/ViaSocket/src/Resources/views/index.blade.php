@@ -29,7 +29,8 @@
             .vs-switch:disabled { opacity: .6; cursor: default; }
             .vs-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 16px; text-align: center; }
             .vs-ideas { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
-            .vs-chip { border: 1px solid #d1d5db; border-radius: 9999px; padding: 4px 12px; font-size: 12px; color: #6b7280; }
+            .vs-chip { border: 1px solid #d1d5db; border-radius: 9999px; padding: 4px 12px; font-size: 12px; color: #6b7280; background: transparent; cursor: pointer; transition: border-color .15s, color .15s; }
+            .vs-chip:hover { border-color: #0e90d9; color: #0e90d9; }
             .vs-timeline { display: flex; flex-direction: column; }
             .vs-step { display: flex; gap: 14px; }
             .vs-rail { display: flex; flex-direction: column; align-items: center; width: 32px; flex: none; }
@@ -157,12 +158,14 @@
                         ></button>
 
                         <div class="vs-ideas">
-                            <span
-                                v-for="idea in messages.ui.ideas"
-                                :key="idea"
+                            <button
+                                v-for="template in templates"
+                                :key="template.key"
+                                type="button"
                                 class="vs-chip"
-                                v-text="idea"
-                            ></span>
+                                @click="startTemplate(template)"
+                                v-text="messages.ui.templates[template.key].label"
+                            ></button>
                         </div>
                     </div>
 
@@ -661,7 +664,7 @@
                             <button
                                 type="button"
                                 class="secondary-button"
-                                @click="picker = null"
+                                @click="closePicker"
                                 v-text="messages.ui.cancel"
                             ></button>
                         </span>
@@ -972,6 +975,24 @@
             const KRAYIN = '__krayin__';
             const SCHEDULE = '__schedule__';
 
+            const TEMPLATES = [
+                {
+                    key: 'lead_slack',
+                    trigger: { kind: 'krayin', event: 'lead.create.after' },
+                    action: { service_id: 'rowbu58rc', name: 'Send Message' },
+                },
+                {
+                    key: 'email_sheet',
+                    trigger: { kind: 'app', service_id: 'rowo0bqrhj5g', name: 'New Email Arrives' },
+                    action: { service_id: 'rowqm5xi2', name: 'Add New Row to Sheet' },
+                },
+                {
+                    key: 'morning_email',
+                    trigger: { kind: 'schedule', cron: 'Every day at 9am' },
+                    action: { service_id: 'rowo0bqrhj5g', name: 'Send Email' },
+                },
+            ];
+
             const leafPaths = (value, prefix = '', out = []) => {
                 if (Array.isArray(value)) {
                     if (value.length) {
@@ -1008,6 +1029,10 @@
                         embedToken: null,
 
                         searchTimer: null,
+
+                        template: null,
+
+                        templates: TEMPLATES,
 
                         connections: [],
 
@@ -1242,6 +1267,64 @@
                         return nodes;
                     },
 
+                    closePicker() {
+                        this.picker = null;
+                        this.template = null;
+                    },
+
+                    startTemplate(template) {
+                        this.newFlow();
+
+                        this.draft.title = this.messages.ui.templates[template.key].title;
+                        this.template = template;
+
+                        this.continueTemplate();
+                    },
+
+                    async continueTemplate() {
+                        const template = this.template;
+
+                        if (! template) {
+                            return;
+                        }
+
+                        if (! this.draft.trigger) {
+                            const trigger = template.trigger;
+
+                            if (trigger.kind === 'krayin') {
+                                this.draft.trigger = { kind: 'krayin', event: trigger.event, label: this.messages.ui.krayin + ' - ' + this.krayinEvents[trigger.event].name };
+
+                                return this.continueTemplate();
+                            }
+
+                            if (trigger.kind === 'schedule') {
+                                this.draft.trigger = { kind: 'schedule', cron: trigger.cron, label: this.messages.ui.schedule + ' - ' + trigger.cron };
+
+                                return this.continueTemplate();
+                            }
+
+                            return this.openTemplateItem('trigger', trigger);
+                        }
+
+                        if (! this.draft.steps.length) {
+                            return this.openTemplateItem('action', template.action);
+                        }
+
+                        this.template = null;
+                    },
+
+                    async openTemplateItem(kind, wanted) {
+                        this.openPicker(kind);
+
+                        await this.chooseApp({ id: wanted.service_id });
+
+                        const item = this.pickerItems.find((candidate) => candidate.name.trim().toLowerCase() === wanted.name.toLowerCase());
+
+                        if (item) {
+                            await this.chooseItem(item);
+                        }
+                    },
+
                     triggerLetter(trigger) {
                         return trigger.kind === 'schedule' ? 'S' : (trigger.kind === 'krayin' ? 'K' : (this.entrySubtitle(trigger) || '?').charAt(0));
                     },
@@ -1323,6 +1406,7 @@
                             return;
                         }
 
+                        this.template = null;
                         this.view = 'list';
                         this.error = '';
                     },
@@ -1499,7 +1583,7 @@
                         const stages = { events: 'apps', schedule: 'apps', items: 'apps', connect: 'items', form: 'items' };
 
                         if (this.picker.stage === 'apps') {
-                            this.picker = null;
+                            this.closePicker();
 
                             return;
                         }
@@ -1559,6 +1643,8 @@
                     chooseEvent(key) {
                         this.draft.trigger = { kind: 'krayin', event: key, label: this.messages.ui.krayin + ' - ' + this.krayinEvents[key].name };
                         this.picker = null;
+
+                        this.continueTemplate();
                     },
 
                     confirmSchedule() {
@@ -1570,6 +1656,8 @@
 
                         this.draft.trigger = { kind: 'schedule', cron: this.picker.cron.trim(), label: this.messages.ui.schedule + ' - ' + this.picker.cron.trim() };
                         this.picker = null;
+
+                        this.continueTemplate();
                     },
 
                     async chooseItem(item, existing = {}) {
@@ -1689,6 +1777,8 @@
                         }
 
                         this.picker = null;
+
+                        this.continueTemplate();
                     },
 
                     hasValue(key) {

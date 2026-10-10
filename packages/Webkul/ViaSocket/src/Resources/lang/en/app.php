@@ -77,7 +77,11 @@ return [
         'need_title' => 'Give your flow a name.',
         'need_trigger' => 'Choose a trigger first.',
         'need_action' => 'Add at least one action.',
-        'ideas' => ['New lead in Krayin, message in Slack', 'New email in Gmail, row in Google Sheets', 'Every morning, a summary email'],
+        'templates' => [
+            'lead_slack' => ['label' => 'New lead in Krayin, message in Slack', 'title' => 'Tell Slack about new leads'],
+            'email_sheet' => ['label' => 'New email in Gmail, row in Google Sheets', 'title' => 'Save new emails in a spreadsheet'],
+            'morning_email' => ['label' => 'Every morning, a summary email', 'title' => 'Morning email'],
+        ],
         'step_app' => 'App',
         'step_trigger' => 'Trigger',
         'step_action' => 'Action',
