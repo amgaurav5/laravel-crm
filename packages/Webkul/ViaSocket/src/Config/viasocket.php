@@ -14,6 +14,8 @@ return [
 
     'api_url' => 'https://flow-api.viasocket.com',
 
+    'run_url' => 'https://flow.sokt.io/func',
+
     'catalog_url' => 'https://flow.sokt.io/func/scriK4LFg2kc',
 
     /*

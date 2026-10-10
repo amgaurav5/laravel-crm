@@ -2,9 +2,12 @@
 
 namespace Webkul\ViaSocket\Providers;
 
+use Diglactic\Breadcrumbs\Breadcrumbs;
+use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\ViaSocket\Services\EmbedTokenService;
+use Webkul\ViaSocket\Support\IntegrationRegistry;
 
 class ViaSocketServiceProvider extends ServiceProvider
 {
@@ -28,6 +31,15 @@ class ViaSocketServiceProvider extends ServiceProvider
         Route::middleware(['web', 'admin_locale', 'user'])
             ->prefix(config('app.admin_path').'/settings/integrations')
             ->group(__DIR__.'/../Routes/web.php');
+
+        foreach (IntegrationRegistry::categories() as $category) {
+            foreach ($category['apps'] as $app) {
+                Breadcrumbs::for('settings.integrations.'.$app['slug'], function (BreadcrumbTrail $trail) use ($app) {
+                    $trail->parent('settings');
+                    $trail->push($app['label'], route($app['route']));
+                });
+            }
+        }
     }
 
     /**

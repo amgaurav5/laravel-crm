@@ -6,6 +6,10 @@ $shared = [
     'admin.settings.integrations.token',
     'admin.settings.integrations.connections.store',
     'admin.settings.integrations.connections.destroy',
+    'admin.settings.integrations.api.actions',
+    'admin.settings.integrations.api.schema',
+    'admin.settings.integrations.api.options',
+    'admin.settings.integrations.api.run',
 ];
 
 $items = [];

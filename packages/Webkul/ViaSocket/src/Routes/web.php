@@ -11,6 +11,14 @@ Route::controller(ViaSocketController::class)->group(function () {
 
     Route::delete('connections/{serviceId}', 'destroy')->name('admin.settings.integrations.connections.destroy');
 
+    Route::get('api/{serviceId}/actions', 'actions')->name('admin.settings.integrations.api.actions');
+
+    Route::get('api/{serviceId}/actions/{actionVersionId}', 'schema')->name('admin.settings.integrations.api.schema');
+
+    Route::post('api/{serviceId}/options', 'options')->name('admin.settings.integrations.api.options');
+
+    Route::post('api/{serviceId}/run', 'run')->name('admin.settings.integrations.api.run');
+
     foreach (IntegrationRegistry::categories() as $category) {
         foreach ($category['apps'] as $app) {
             Route::get($app['slug'], 'show')
