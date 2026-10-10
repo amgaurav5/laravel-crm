@@ -85,7 +85,7 @@ class ViaSocketController extends Controller
     }
 
     /**
-     * Revoke the connection on viaSocket, then forget it. A connection viaSocket no longer knows is simply forgotten.
+     * Revoke the connection on viaSocket, then forget it. A connection the provider no longer knows is simply forgotten.
      */
     public function destroy(string $serviceId): JsonResponse
     {
@@ -105,11 +105,11 @@ class ViaSocketController extends Controller
                 ->withHeaders(['authorization' => $this->embedTokenService->make($this->identifier())])
                 ->delete(config('viasocket.api_url').'/embed/authentications/revoke/'.$connection->auth_id);
         } catch (Throwable) {
-            return response()->json(['message' => 'Could not reach viaSocket.'], 502);
+            return response()->json(['message' => 'Could not disconnect this app. Please try again.'], 502);
         }
 
         if ($response->serverError()) {
-            return response()->json(['message' => 'viaSocket could not disconnect this app.'], 502);
+            return response()->json(['message' => 'Could not disconnect this app. Please try again.'], 502);
         }
 
         $connection->delete();

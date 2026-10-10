@@ -22,120 +22,198 @@
             </div>
         </div>
 
-        <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-            <p
-                id="viasocket-status"
-                class="mb-4 text-gray-600 dark:text-gray-300"
-            >
-                {{ $connected
-                    ? trans('viasocket::app.show.connected-info', ['name' => $name])
-                    : trans('viasocket::app.show.not-connected-info', ['name' => $name]) }}
-            </p>
-
-            <button
-                type="button"
-                id="viasocket-connect"
-                class="primary-button"
-                @if ($connected) style="display: none" @endif
-            >
-                @if ($icon)
-                    <img src="{{ $icon }}" alt="" width="20" height="20" style="display: inline-block; vertical-align: middle; margin-right: 6px">
-                @endif
-
-                @lang('viasocket::app.show.connect-btn', ['name' => $name])
-            </button>
-
-            <button
-                type="button"
-                id="viasocket-disconnect"
-                class="secondary-button"
-                @if (! $connected) style="display: none" @endif
-            >
-                @lang('viasocket::app.show.disconnect-btn')
-            </button>
-
-            <p
-                id="viasocket-error"
-                class="mt-3 text-sm text-red-600"
-                style="display: none"
-            ></p>
-
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                @lang('viasocket::app.show.powered-by')
-            </p>
-        </div>
+        <v-integration-connect
+            service-id="{{ $serviceId }}"
+            icon="{{ $icon }}"
+            :connected="{{ $connected ? 'true' : 'false' }}"
+        ></v-integration-connect>
     </div>
 
     @pushOnce('scripts')
         <script src="{{ $connectScript }}"></script>
 
-        <script>
-            (() => {
-                const serviceId = @json($serviceId);
-                const csrfToken = @json(csrf_token());
-                const messages = {
-                    connected: @json(trans('viasocket::app.show.connected-info', ['name' => $name])),
-                    notConnected: @json(trans('viasocket::app.show.not-connected-info', ['name' => $name])),
-                    error: @json(trans('viasocket::app.show.error')),
-                };
+        <script
+            type="text/x-template"
+            id="v-integration-connect-template"
+        >
+            <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p
+                    class="mb-4 text-gray-600 dark:text-gray-300"
+                    v-text="isConnected ? messages.connected : messages.notConnected"
+                ></p>
 
-                const connectButton = document.getElementById('viasocket-connect');
-                const disconnectButton = document.getElementById('viasocket-disconnect');
-                const status = document.getElementById('viasocket-status');
-                const error = document.getElementById('viasocket-error');
+                <button
+                    v-if="! isConnected"
+                    type="button"
+                    class="primary-button"
+                    :disabled="busy"
+                    @click="connect"
+                >
+                    <img
+                        v-if="icon"
+                        :src="icon"
+                        alt=""
+                        width="20"
+                        height="20"
+                        style="display: inline-block; vertical-align: middle; margin-right: 6px"
+                    >
 
-                const request = (url, method, body) => fetch(url, {
-                    method,
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
+                    <span v-text="messages.connectButton"></span>
+                </button>
+
+                <button
+                    v-else
+                    type="button"
+                    class="secondary-button"
+                    :disabled="busy"
+                    @click="disconnect"
+                    v-text="messages.disconnectButton"
+                ></button>
+
+                <p
+                    v-if="error"
+                    class="mt-3 text-sm text-red-600"
+                    v-text="error"
+                ></p>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-integration-connect', {
+                template: '#v-integration-connect-template',
+
+                props: ['serviceId', 'icon', 'connected'],
+
+                data() {
+                    return {
+                        isConnected: this.connected,
+
+                        busy: false,
+
+                        error: '',
+
+                        embedToken: null,
+
+                        messages: {
+                            connected: @json(trans('viasocket::app.show.connected-info', ['name' => $name])),
+                            notConnected: @json(trans('viasocket::app.show.not-connected-info', ['name' => $name])),
+                            connectButton: @json(trans('viasocket::app.show.connect-btn', ['name' => $name])),
+                            disconnectButton: @json(trans('viasocket::app.show.disconnect-btn')),
+                            error: @json(trans('viasocket::app.show.error')),
+                        },
+                    };
+                },
+
+                mounted() {
+                    this.loadToken().catch(() => {});
+
+                    window.addEventListener('message', this.onMessage);
+                },
+
+                beforeUnmount() {
+                    window.removeEventListener('message', this.onMessage);
+                },
+
+                methods: {
+                    async loadToken() {
+                        if (! this.embedToken) {
+                            const response = await fetch(@json(route('admin.settings.integrations.token')), {
+                                credentials: 'same-origin',
+                            });
+
+                            if (! response.ok) {
+                                throw new Error('token');
+                            }
+
+                            this.embedToken = await response.text();
+                        }
+
+                        return this.embedToken;
                     },
-                    body: body ? JSON.stringify(body) : undefined,
-                });
 
-                const show = (connected) => {
-                    error.style.display = 'none';
-                    status.textContent = connected ? messages.connected : messages.notConnected;
-                    connectButton.style.display = connected ? 'none' : '';
-                    disconnectButton.style.display = connected ? '' : 'none';
-                };
-
-                const fail = (message) => {
-                    error.textContent = message || messages.error;
-                    error.style.display = '';
-                };
-
-                connectButton.addEventListener('click', async () => {
-                    const embedToken = await fetch(@json(route('admin.settings.integrations.token')), {
-                        credentials: 'same-origin',
-                    }).then((response) => response.text());
-
-                    openViasocketConnection(embedToken, serviceId);
-                });
-
-                disconnectButton.addEventListener('click', async () => {
-                    const response = await request(@json(route('admin.settings.integrations.connections.destroy', ['serviceId' => $serviceId])), 'DELETE');
-
-                    response.ok ? show(false) : fail((await response.json().catch(() => ({}))).message);
-                });
-
-                window.addEventListener('message', async (event) => {
-                    const message = event.data;
-
-                    if (message?.type === 'viasocket_connection_success' && message.serviceId === serviceId) {
-                        const response = await request(@json(route('admin.settings.integrations.connections.store')), 'POST', {
-                            service_id: serviceId,
-                            auth_id: message.data.id,
+                    request(url, method, body) {
+                        return fetch(url, {
+                            method,
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': @json(csrf_token()),
+                            },
+                            body: body ? JSON.stringify(body) : undefined,
                         });
+                    },
 
-                        response.ok ? show(true) : fail();
-                    } else if (message?.type === 'viasocket_connection_error') {
-                        fail(message.error?.message);
-                    }
-                });
-            })();
+                    async connect() {
+                        this.error = '';
+
+                        if (typeof openViasocketConnection !== 'function') {
+                            this.error = this.messages.error;
+
+                            return;
+                        }
+
+                        try {
+                            openViasocketConnection(await this.loadToken(), this.serviceId);
+                        } catch (exception) {
+                            this.error = this.messages.error;
+                        }
+                    },
+
+                    async disconnect() {
+                        this.busy = true;
+                        this.error = '';
+
+                        try {
+                            const response = await this.request(@json(route('admin.settings.integrations.connections.destroy', ['serviceId' => $serviceId])), 'DELETE');
+
+                            if (response.ok) {
+                                this.isConnected = false;
+                            } else {
+                                this.error = (await response.json().catch(() => ({}))).message || this.messages.error;
+                            }
+                        } catch (exception) {
+                            this.error = this.messages.error;
+                        }
+
+                        this.busy = false;
+                    },
+
+                    async onMessage(event) {
+                        const message = event.data;
+
+                        if (message?.type === 'viasocket_connection_error') {
+                            this.error = message.error?.message || this.messages.error;
+
+                            return;
+                        }
+
+                        if (message?.type !== 'viasocket_connection_success' || message.serviceId !== this.serviceId) {
+                            return;
+                        }
+
+                        this.busy = true;
+
+                        try {
+                            const response = await this.request(@json(route('admin.settings.integrations.connections.store')), 'POST', {
+                                service_id: this.serviceId,
+                                auth_id: message.data.id,
+                            });
+
+                            if (response.ok) {
+                                this.isConnected = true;
+                                this.error = '';
+                            } else {
+                                this.error = this.messages.error;
+                            }
+                        } catch (exception) {
+                            this.error = this.messages.error;
+                        }
+
+                        this.busy = false;
+                    },
+                },
+            });
         </script>
     @endPushOnce
 </x-admin::layouts>
