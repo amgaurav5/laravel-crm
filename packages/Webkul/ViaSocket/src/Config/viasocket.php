@@ -2,7 +2,7 @@
 
 return [
     /*
-     * Credentials of the viaSocket embed. The module stays disabled until all three are set.
+     * Credentials of the embed. The module stays disabled until all three are set.
      */
     'org_id' => env('VIASOCKET_ORG_ID'),
 
@@ -14,56 +14,17 @@ return [
 
     'api_url' => 'https://flow-api.viasocket.com',
 
-    'run_url' => 'https://flow.sokt.io/func',
+    'flow_url' => 'https://flow.sokt.io/func',
 
     'catalog_url' => 'https://flow.sokt.io/func/scriK4LFg2kc',
 
-    /*
-     * The integrations listed on the Settings page, grouped by category: service id => label.
-     */
-    'categories' => [
-        'Email' => [
-            'rowo0bqrhj5g' => 'Gmail',
-            'rowtuwzc2a57' => 'Microsoft Outlook',
-            'row85xjphw1y' => 'MailChimp',
-        ],
+    'search_url' => 'https://flow.sokt.io/func/scri12BSufQM',
 
-        'Communication' => [
-            'rowbu58rc' => 'Slack',
-            'rowxzmscatfe' => 'Microsoft Teams',
-            'rowhh6qyg7v9' => 'Zoom',
-        ],
+    'apps_url' => 'https://plug-service.viasocket.com/api/v1/plugins/all',
 
-        'Calendar & Scheduling' => [
-            'rowkhibv5efp' => 'Google Calendar',
-            'rowzc1pvmxyn' => 'Calendly',
-        ],
-
-        'Spreadsheets & Files' => [
-            'rowqm5xi2' => 'Google Sheets',
-            'row292jrurzk' => 'Google Drive',
-            'rowk7lb9w' => 'Airtable',
-        ],
-
-        'CRM & Sales' => [
-            'rowqfz6bv' => 'HubSpot',
-            'row6dq7roqe6' => 'Salesforce',
-            'row40nchn9gf' => 'Zoho CRM',
-            'row5lelnpykr' => 'Pipedrive',
-        ],
-
-        'Productivity & Projects' => [
-            'rowndtpfztyo' => 'Notion',
-            'rowm0p081h7n' => 'Asana',
-        ],
-
-        'Forms' => [
-            'rowshu8t54lr' => 'Google Forms',
-        ],
-
-        'Payments & Commerce' => [
-            'rowr25lbhrq6' => 'Stripe',
-            'rowyvmqz30q7' => 'Shopify',
-        ],
+    'scripts' => [
+        'create_flow' => 'scrisgf5H0hN',
+        'set_trigger' => 'scrij2DSRMlP',
+        'save_steps' => 'scrigkyMNOEC',
     ],
 ];

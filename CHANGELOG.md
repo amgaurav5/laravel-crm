@@ -4,7 +4,7 @@ This changelog consists of the bug & security fixes and new features being inclu
 
 ## **v2.2.6 (10th of Sept 2026)**
 
-* [feature] Added optional app integrations in Settings, off by default and enabled when `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID` and `VIASOCKET_EMBED_SECRET` are set. Twenty popular apps (Gmail, Slack, HubSpot, Google Sheets and more) appear as cards grouped by category, and each opens a page where a user can connect or disconnect their own account, powered by viaSocket.
+* [feature] Added an optional Integrations section above Settings, off by default and enabled when `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID` and `VIASOCKET_EMBED_SECRET` are set. Each user can build and publish automations: choose what starts a flow (a Krayin event such as a new lead, a schedule, or an event in a connected app), then one or more actions in any connected app, using the trigger's data in the action fields.
 
 * [feature] Added MariaDB support.
 

@@ -2,12 +2,12 @@
 
 namespace Webkul\ViaSocket\Providers;
 
-use Diglactic\Breadcrumbs\Breadcrumbs;
-use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Webkul\ViaSocket\Listeners\KrayinEventListener;
 use Webkul\ViaSocket\Services\EmbedTokenService;
-use Webkul\ViaSocket\Support\IntegrationRegistry;
+use Webkul\ViaSocket\Support\KrayinEvents;
 
 class ViaSocketServiceProvider extends ServiceProvider
 {
@@ -29,16 +29,11 @@ class ViaSocketServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'viasocket');
 
         Route::middleware(['web', 'admin_locale', 'user'])
-            ->prefix(config('app.admin_path').'/settings/integrations')
+            ->prefix(config('app.admin_path').'/integrations')
             ->group(__DIR__.'/../Routes/web.php');
 
-        foreach (IntegrationRegistry::categories() as $category) {
-            foreach ($category['apps'] as $app) {
-                Breadcrumbs::for('settings.integrations.'.$app['slug'], function (BreadcrumbTrail $trail) use ($app) {
-                    $trail->parent('settings');
-                    $trail->push($app['label'], route($app['route']));
-                });
-            }
+        foreach (array_keys(KrayinEvents::all()) as $event) {
+            Event::listen($event, fn ($model) => app(KrayinEventListener::class)->handle($event, $model));
         }
     }
 

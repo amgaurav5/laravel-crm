@@ -1,35 +1,24 @@
 <?php
 
-use Webkul\ViaSocket\Support\IntegrationRegistry;
-
-$shared = [
-    'admin.settings.integrations.token',
-    'admin.settings.integrations.connections.store',
-    'admin.settings.integrations.connections.destroy',
-    'admin.settings.integrations.api.actions',
-    'admin.settings.integrations.api.schema',
-    'admin.settings.integrations.api.options',
-    'admin.settings.integrations.api.run',
+return [
+    [
+        'key' => 'integrations',
+        'name' => 'viasocket::app.menu.title',
+        'route' => [
+            'admin.integrations.index',
+            'admin.integrations.token',
+            'admin.integrations.apps',
+            'admin.integrations.app',
+            'admin.integrations.schema',
+            'admin.integrations.options',
+            'admin.integrations.connections.store',
+            'admin.integrations.connections.destroy',
+            'admin.integrations.flows.index',
+            'admin.integrations.flows.store',
+            'admin.integrations.flows.update',
+            'admin.integrations.flows.status',
+            'admin.integrations.flows.destroy',
+        ],
+        'sort' => 7.5,
+    ],
 ];
-
-$items = [];
-
-foreach (IntegrationRegistry::categories() as $index => $category) {
-    $items[] = [
-        'key' => 'settings.'.$category['key'],
-        'name' => $category['name'],
-        'route' => array_column($category['apps'], 'route'),
-        'sort' => 10 + $index,
-    ];
-
-    foreach ($category['apps'] as $position => $app) {
-        $items[] = [
-            'key' => 'settings.'.$category['key'].'.'.$app['slug'],
-            'name' => $app['label'],
-            'route' => array_merge([$app['route']], $shared),
-            'sort' => $position + 1,
-        ];
-    }
-}
-
-return $items;

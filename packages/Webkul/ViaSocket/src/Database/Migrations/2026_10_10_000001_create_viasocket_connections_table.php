@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedInteger('user_id');
             $table->string('service_id');
             $table->text('auth_id');
-            $table->text('script_id')->nullable();
             $table->timestamps();
 
             $table->unique(['user_id', 'service_id']);

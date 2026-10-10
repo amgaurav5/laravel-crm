@@ -23,7 +23,6 @@ class ViaSocketConnection extends Model implements ViaSocketConnectionContract
         'user_id',
         'service_id',
         'auth_id',
-        'script_id',
     ];
 
     /**
@@ -33,7 +32,6 @@ class ViaSocketConnection extends Model implements ViaSocketConnectionContract
      */
     protected $casts = [
         'auth_id' => 'encrypted',
-        'script_id' => 'encrypted',
     ];
 
     /**
@@ -43,6 +41,5 @@ class ViaSocketConnection extends Model implements ViaSocketConnectionContract
      */
     protected $hidden = [
         'auth_id',
-        'script_id',
     ];
 }
