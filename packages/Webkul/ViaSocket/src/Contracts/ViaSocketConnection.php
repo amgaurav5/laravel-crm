@@ -2,4 +2,4 @@
 
 namespace Webkul\ViaSocket\Contracts;
 
-interface ViaSocketFlow {}
+interface ViaSocketConnection {}

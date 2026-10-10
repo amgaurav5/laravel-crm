@@ -5,10 +5,14 @@ namespace Webkul\ViaSocket\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
+use Throwable;
 use Webkul\Admin\Http\Controllers\Controller;
-use Webkul\ViaSocket\Repositories\ViaSocketFlowRepository;
+use Webkul\ViaSocket\Repositories\ViaSocketConnectionRepository;
+use Webkul\ViaSocket\Services\CatalogService;
 use Webkul\ViaSocket\Services\EmbedTokenService;
+use Webkul\ViaSocket\Support\IntegrationRegistry;
 
 class ViaSocketController extends Controller
 {
@@ -17,17 +21,33 @@ class ViaSocketController extends Controller
      */
     public function __construct(
         protected EmbedTokenService $embedTokenService,
-        protected ViaSocketFlowRepository $viaSocketFlowRepository,
+        protected CatalogService $catalogService,
+        protected ViaSocketConnectionRepository $viaSocketConnectionRepository,
     ) {}
 
     /**
-     * Display the viaSocket integrations page.
+     * Display one app with its Connect or Disconnect button.
      */
-    public function index(): View
+    public function show(string $serviceId): View
     {
-        return view('viasocket::index', [
-            'embedScript' => config('viasocket.embed_script'),
-            'embedOrigin' => config('viasocket.embed_origin'),
+        $app = IntegrationRegistry::find($serviceId);
+
+        abort_unless($app, 404);
+
+        $details = $this->catalogService->find($serviceId);
+
+        $connection = $this->viaSocketConnectionRepository->findOneWhere([
+            'user_id' => $this->userId(),
+            'service_id' => $serviceId,
+        ]);
+
+        return view('viasocket::show', [
+            'serviceId' => $serviceId,
+            'name' => $details['name'] ?? $app['label'],
+            'icon' => $details['icon'] ?? null,
+            'category' => $app['category'],
+            'connected' => (bool) $connection,
+            'connectScript' => config('viasocket.connect_script'),
         ]);
     }
 
@@ -36,68 +56,80 @@ class ViaSocketController extends Controller
      */
     public function token(): Response
     {
-        $token = $this->embedTokenService->make('krayin-user-'.auth()->guard('user')->id());
-
-        return response($token, 200, [
+        return response($this->embedTokenService->make($this->identifier()), 200, [
             'Content-Type' => 'text/plain',
             'Cache-Control' => 'no-store',
         ]);
     }
 
     /**
-     * Store, pause or remove a flow that a user built in the embedded UI.
+     * Store the connection a user just made in the viaSocket popup.
      */
-    public function storeFlow(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'id' => ['required', 'string', 'max:191'],
-            'action' => ['required', 'in:initiated,published,updated,paused,deleted'],
-            'title' => ['nullable', 'string', 'max:255'],
-            'webhookurl' => ['nullable', 'string', 'max:2048'],
-            'payload' => ['nullable', 'array'],
+            'service_id' => ['required', 'string', 'max:64'],
+            'auth_id' => ['required', 'string', 'max:191', 'regex:/^[A-Za-z0-9_]+$/'],
         ]);
 
-        $flow = $this->viaSocketFlowRepository->findOneByField('flow_id', $data['id']);
+        abort_unless(IntegrationRegistry::find($data['service_id']), 404);
 
-        switch ($data['action']) {
-            case 'initiated':
-                break;
+        abort_unless(str_ends_with($data['auth_id'], '_'.$data['service_id']), 422);
 
-            case 'deleted':
-                $flow?->delete();
-
-                break;
-
-            case 'paused':
-                $flow?->update(['status' => 'paused']);
-
-                break;
-
-            default:
-                if (! $this->isFlowUrl($data['webhookurl'] ?? null)) {
-                    return response()->json(['message' => 'Invalid flow URL.'], 422);
-                }
-
-                $this->viaSocketFlowRepository->updateOrCreate(
-                    ['flow_id' => $data['id']],
-                    [
-                        'user_id' => auth()->guard('user')->id(),
-                        'title' => $data['title'] ?? null,
-                        'webhook_url' => $data['webhookurl'],
-                        'status' => 'active',
-                        'payload' => $data['payload'] ?? null,
-                    ]
-                );
-        }
+        $this->viaSocketConnectionRepository->updateOrCreate(
+            ['user_id' => $this->userId(), 'service_id' => $data['service_id']],
+            ['auth_id' => $data['auth_id']]
+        );
 
         return response()->json(['ok' => true]);
     }
 
     /**
-     * Only accept viaSocket flow URLs, so the server never posts to an arbitrary host.
+     * Revoke the connection on viaSocket, then forget it. A connection viaSocket no longer knows is simply forgotten.
      */
-    protected function isFlowUrl(?string $url): bool
+    public function destroy(string $serviceId): JsonResponse
     {
-        return (bool) preg_match('#^https://flow\.sokt\.io/func/[A-Za-z0-9_-]+$#', (string) $url);
+        abort_unless(IntegrationRegistry::find($serviceId), 404);
+
+        $connection = $this->viaSocketConnectionRepository->findOneWhere([
+            'user_id' => $this->userId(),
+            'service_id' => $serviceId,
+        ]);
+
+        if (! $connection) {
+            return response()->json(['ok' => true]);
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders(['authorization' => $this->embedTokenService->make($this->identifier())])
+                ->delete(config('viasocket.api_url').'/embed/authentications/revoke/'.$connection->auth_id);
+        } catch (Throwable) {
+            return response()->json(['message' => 'Could not reach viaSocket.'], 502);
+        }
+
+        if ($response->serverError()) {
+            return response()->json(['message' => 'viaSocket could not disconnect this app.'], 502);
+        }
+
+        $connection->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * The signed-in admin user's id.
+     */
+    protected function userId(): int
+    {
+        return (int) auth()->guard('user')->id();
+    }
+
+    /**
+     * The stable viaSocket identifier for the signed-in admin user.
+     */
+    protected function identifier(): string
+    {
+        return 'krayin-user-'.$this->userId();
     }
 }

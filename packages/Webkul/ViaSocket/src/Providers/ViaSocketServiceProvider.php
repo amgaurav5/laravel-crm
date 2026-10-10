@@ -2,10 +2,8 @@
 
 namespace Webkul\ViaSocket\Providers;
 
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Webkul\ViaSocket\Listeners\LeadCreated;
 use Webkul\ViaSocket\Services\EmbedTokenService;
 
 class ViaSocketServiceProvider extends ServiceProvider
@@ -28,10 +26,8 @@ class ViaSocketServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'viasocket');
 
         Route::middleware(['web', 'admin_locale', 'user'])
-            ->prefix(config('app.admin_path').'/settings/viasocket')
+            ->prefix(config('app.admin_path').'/settings/integrations')
             ->group(__DIR__.'/../Routes/web.php');
-
-        Event::listen('lead.create.after', [LeadCreated::class, 'handle']);
     }
 
     /**

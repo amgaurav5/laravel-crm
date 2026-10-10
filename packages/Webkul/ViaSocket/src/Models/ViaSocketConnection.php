@@ -3,16 +3,16 @@
 namespace Webkul\ViaSocket\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Webkul\ViaSocket\Contracts\ViaSocketFlow as ViaSocketFlowContract;
+use Webkul\ViaSocket\Contracts\ViaSocketConnection as ViaSocketConnectionContract;
 
-class ViaSocketFlow extends Model implements ViaSocketFlowContract
+class ViaSocketConnection extends Model implements ViaSocketConnectionContract
 {
     /**
      * Table name.
      *
      * @var string
      */
-    protected $table = 'viasocket_flows';
+    protected $table = 'viasocket_connections';
 
     /**
      * The attributes that are mass assignable.
@@ -20,22 +20,18 @@ class ViaSocketFlow extends Model implements ViaSocketFlowContract
      * @var array
      */
     protected $fillable = [
-        'flow_id',
         'user_id',
-        'title',
-        'webhook_url',
-        'status',
-        'payload',
+        'service_id',
+        'auth_id',
     ];
 
     /**
-     * The attributes that are castable. The flow URL runs the user's apps, so it is stored encrypted.
+     * The attributes that are castable. The connection id grants access to the user's app, so it is stored encrypted.
      *
      * @var array
      */
     protected $casts = [
-        'webhook_url' => 'encrypted',
-        'payload' => 'array',
+        'auth_id' => 'encrypted',
     ];
 
     /**
@@ -44,6 +40,6 @@ class ViaSocketFlow extends Model implements ViaSocketFlowContract
      * @var array
      */
     protected $hidden = [
-        'webhook_url',
+        'auth_id',
     ];
 }
