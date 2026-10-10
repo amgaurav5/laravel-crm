@@ -1736,6 +1736,8 @@
 
                         this.picker.schema = response.data;
                         this.picker.stage = 'form';
+
+                        this.preloadOptions();
                     },
 
                     confirmForm() {
@@ -1829,6 +1831,8 @@
                         const chosen = [...event.target.selectedOptions].map((option) => option._value ?? option.value);
 
                         this.setValue(field, field.block.type === 'multiselect' ? chosen.filter((item) => item !== '') : (chosen[0] ?? ''));
+
+                        this.preloadOptions();
                     },
 
                     insertVariable(field, event) {
@@ -1853,11 +1857,25 @@
                         });
                     },
 
+                    preloadOptions() {
+                        this.$nextTick(() => {
+                            if (! this.picker?.schema) {
+                                return;
+                            }
+
+                            this.ordered.forEach((field) => {
+                                if (! field.group && this.isChoice(field.block) && this.state.visible[field.key]) {
+                                    this.loadOptions(field.key);
+                                }
+                            });
+                        });
+                    },
+
                     async loadOptions(key) {
                         const picker = this.picker;
                         const block = picker.schema.blocks[key];
 
-                        if (block.options || picker.options[key] || picker.loading[key] || (! block.source && ! block.enableSearchApi)) {
+                        if (block.options || picker.options[key] || picker.loading[key]) {
                             return;
                         }
 

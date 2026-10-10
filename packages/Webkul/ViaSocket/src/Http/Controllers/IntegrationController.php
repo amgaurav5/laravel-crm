@@ -100,15 +100,27 @@ class IntegrationController extends Controller
 
         abort_unless($connection, 422);
 
-        try {
-            $response = Http::timeout(30)
-                ->withHeaders(['authorization' => $this->embedTokenService->make($this->identifier())])
-                ->post(config('viasocket.api_url').'/embed/list-options/'.$data['version_id'], [
-                    'fieldKey' => $data['field_key'],
-                    'auth_id' => $connection->auth_id,
-                    'existingFields' => (object) ($data['existing_fields'] ?? []),
-                ]);
-        } catch (Throwable) {
+        $response = null;
+
+        foreach ([1, 2] as $attempt) {
+            try {
+                $response = Http::timeout(30)
+                    ->withHeaders(['authorization' => $this->embedTokenService->make($this->identifier())])
+                    ->post(config('viasocket.api_url').'/embed/list-options/'.$data['version_id'], [
+                        'fieldKey' => $data['field_key'],
+                        'auth_id' => $connection->auth_id,
+                        'existingFields' => (object) ($data['existing_fields'] ?? []),
+                    ]);
+            } catch (Throwable) {
+                $response = null;
+            }
+
+            if ($response?->successful()) {
+                break;
+            }
+        }
+
+        if (! $response) {
             return response()->json(['message' => 'Could not load the choices.'], 502);
         }
 
