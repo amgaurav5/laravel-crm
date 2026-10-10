@@ -308,19 +308,50 @@
 
                     <div
                         v-for="option in options"
-                        :key="String(option.value)"
+                        :key="keyOf(option)"
                     >
-                        <label
-                            class="mb-1 block text-xs text-gray-600 dark:text-gray-300"
-                            v-text="option.label"
-                        ></label>
+                        <label class="mb-1 flex items-center justify-between gap-1 text-xs text-gray-700 dark:text-gray-300">
+                            <span>
+                                <span v-text="option.label || keyOf(option)"></span>
 
-                        <input
-                            type="text"
-                            class="w-full rounded border border-gray-300 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
-                            :value="(modelValue || {})[option.value]"
-                            @input="setGroupValue(option.value, $event.target.value)"
-                        >
+                                <span
+                                    v-if="option.required"
+                                    class="text-red-600"
+                                >*</span>
+                            </span>
+
+                            <select
+                                v-if="variables && variables.length && childIsText(option)"
+                                class="rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                                @change="insertInto(option, $event)"
+                            >
+                                <option
+                                    value=""
+                                    v-text="texts.insert_value"
+                                ></option>
+
+                                <option
+                                    v-for="variable in variables"
+                                    :key="variable.value"
+                                    :value="variable.value"
+                                    v-text="variable.label"
+                                ></option>
+                            </select>
+                        </label>
+
+                        <v-vs-editor
+                            :block="childBlock(option)"
+                            :model-value="(modelValue || {})[keyOf(option)]"
+                            :options="option.options || []"
+                            :texts="texts"
+                            @update:model-value="setGroupValue(keyOf(option), $event)"
+                        ></v-vs-editor>
+
+                        <p
+                            v-if="option.help"
+                            class="mt-1 text-xs text-gray-600 dark:text-gray-300"
+                            v-text="option.help"
+                        ></p>
                     </div>
                 </div>
 
@@ -1188,6 +1219,7 @@
                                     :loading="!! picker.loading[field.key]"
                                     :error="picker.optionErrors[field.key] || ''"
                                     :disabled="needsConnection(field)"
+                                    :variables="picker.kind === 'action' ? variableOptions : []"
                                     :texts="messages.ui"
                                     @update:model-value="setValue(field, $event)"
                                     @load="loadOptions(field.key, $event)"
@@ -1377,7 +1409,7 @@
             app.component('v-vs-editor', {
                 template: '#v-vs-editor-template',
 
-                props: ['block', 'modelValue', 'options', 'loading', 'error', 'disabled', 'texts'],
+                props: ['block', 'modelValue', 'options', 'loading', 'error', 'disabled', 'texts', 'variables'],
 
                 emits: ['update:modelValue', 'load'],
 
@@ -1401,7 +1433,7 @@
                             return 'dictionary';
                         }
 
-                        if (block.type === 'input groups' && block.source) {
+                        if (block.type === 'input groups') {
                             return 'sourceGroup';
                         }
 
@@ -1430,10 +1462,38 @@
                         this.$emit('update:modelValue', Object.fromEntries(this.rows.filter((row) => row.k !== '').map((row) => [row.k, row.v])));
                     },
 
-                    setGroupValue(key, text) {
+                    keyOf(option) {
+                        return String(option.key ?? option.value);
+                    },
+
+                    childBlock(option) {
+                        return {
+                            type: option.type || 'string',
+                            label: option.label,
+                            placeholder: option.placeholder,
+                            options: option.options,
+                            list: false,
+                        };
+                    },
+
+                    childIsText(option) {
+                        return ['string', 'aifield', 'html', 'markdown', undefined].includes(option.type);
+                    },
+
+                    insertInto(option, event) {
+                        const path = event.target.value;
+
+                        event.target.value = '';
+
+                        if (path) {
+                            this.setGroupValue(this.keyOf(option), String((this.modelValue || {})[this.keyOf(option)] ?? '') + '{' + '{' + path + '}' + '}');
+                        }
+                    },
+
+                    setGroupValue(key, value) {
                         const next = { ...(this.modelValue || {}) };
 
-                        text === '' ? delete next[key] : next[key] = text;
+                        value === '' || value === undefined || value === null ? delete next[key] : next[key] = value;
 
                         this.$emit('update:modelValue', next);
                     },
@@ -1571,6 +1631,10 @@
                         return this.picker.kind === 'trigger' ? this.picker.app.triggers : this.picker.app.actions;
                     },
 
+                    variableOptions() {
+                        return this.variablePaths.map((path) => ({ value: path, label: this.pretty(path) }));
+                    },
+
                     variablePaths() {
                         const trigger = this.draft.trigger;
 
@@ -1600,7 +1664,7 @@
                                 return;
                             }
 
-                            const group = block.type === 'input groups' && ! block.source;
+                            const group = block.type === 'input groups' && (schema.steps[key] || []).length > 0;
 
                             out.push({ key, block, depth, group });
 
@@ -1989,6 +2053,8 @@
                             options: {},
                             optionErrors: {},
                             loading: {},
+                            pending: {},
+                            loaded: {},
                             showMore: false,
                         };
 
@@ -2198,6 +2264,17 @@
                             return;
                         }
 
+                        const emptyChild = this.ordered
+                            .filter((field) => ! field.group && field.block.type === 'input groups' && this.state.visible[field.key])
+                            .flatMap((field) => (this.picker.options[field.key] || []).map((option) => ({ field, option })))
+                            .find(({ field, option }) => option.required && ! (this.picker.values[field.key] || {})[String(option.key ?? option.value)]);
+
+                        if (emptyChild) {
+                            this.error = this.messages.ui.required.replace(':field', emptyChild.option.label || emptyChild.option.key);
+
+                            return;
+                        }
+
                         const app = this.picker.app;
                         const item = this.picker.item;
                         const values = this.state.input;
@@ -2245,7 +2322,7 @@
                     },
 
                     needsOptions(block) {
-                        return block.type === 'dropdown' || block.type === 'multiselect' || (block.type === 'input groups' && !! block.source);
+                        return block.type === 'dropdown' || block.type === 'multiselect' || block.type === 'input groups';
                     },
 
                     needsConnection(field) {
@@ -2280,9 +2357,13 @@
                     clearDependents(key) {
                         Object.entries(this.picker.schema.blocks).forEach(([other, block]) => {
                             if ((block.dependsOn || []).includes(key)) {
-                                delete this.picker.values[other];
+                                if (block.type !== 'input groups') {
+                                    delete this.picker.values[other];
+                                }
+
                                 delete this.picker.options[other];
                                 delete this.picker.optionErrors[other];
+                                delete this.picker.loaded[other];
 
                                 this.clearDependents(other);
                             }
@@ -2307,10 +2388,17 @@
                         const picker = this.picker;
                         const block = picker.schema.blocks[key];
 
-                        if (block.options || ! picker.app.connected || picker.loading[key] || (picker.options[key] && ! force)) {
+                        if (block.options || ! picker.app.connected) {
                             return;
                         }
 
+                        const signature = JSON.stringify((block.dependsOn || []).map((dependency) => picker.values[dependency] ?? null));
+
+                        if (! force && (picker.pending[key] === signature || (picker.options[key] && picker.loaded[key] === signature))) {
+                            return;
+                        }
+
+                        picker.pending[key] = signature;
                         picker.loading[key] = true;
                         picker.optionErrors[key] = '';
 
@@ -2320,13 +2408,27 @@
                             existing_fields: this.state.input,
                         });
 
-                        if (response.ok) {
-                            picker.options[key] = response.data.options;
-                        } else {
-                            picker.optionErrors[key] = response.data.message || this.messages.ui.error;
+                        if (this.picker !== picker || picker.pending[key] !== signature) {
+                            return;
                         }
 
+                        picker.pending[key] = null;
                         picker.loading[key] = false;
+
+                        if (! response.ok) {
+                            picker.optionErrors[key] = response.data.message || this.messages.ui.error;
+
+                            return;
+                        }
+
+                        picker.options[key] = response.data.options;
+                        picker.loaded[key] = signature;
+
+                        if (block.type === 'input groups' && picker.values[key]) {
+                            const allowed = response.data.options.map((option) => String(option.key ?? option.value));
+
+                            picker.values[key] = Object.fromEntries(Object.entries(picker.values[key]).filter(([name]) => allowed.includes(name)));
+                        }
                     },
                 },
             });
