@@ -81,6 +81,8 @@ jobs:
           echo "Submitted app: $app_name"
 
       - name: Wait for build result
+        env:
+          EMBARKO_DEPLOY_TOKEN: ${{ secrets.KRAYIN }}
         run: |
           set -euo pipefail
           for i in $(seq 1 40); do
