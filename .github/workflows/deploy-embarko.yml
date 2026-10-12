@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - feature/viasocket-embed
-    paths:
-      - '**'
-      - '! .github/workflows/deploy-embarko.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,10 +28,10 @@ jobs:
 
       - name: Submit deployment to Embarko
         env:
-          EMBARKO_DEPLOY_TOKEN: ${{ secrets.EMBARKO_DEPLOY_TOKEN }}
+          EMBARKO_DEPLOY_TOKEN: ${{ secrets.KRAYIN }}
         run: |
           if [ -z "$EMBARKO_DEPLOY_TOKEN" ]; then
-            echo "::error::GitHub Actions secret EMBARKO_DEPLOY_TOKEN is not configured."
+            echo "::error::GitHub Actions secret KRAYIN is not configured."
             exit 1
           fi
 
@@ -46,8 +43,6 @@ jobs:
             -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip"
 
       - name: Wait for build result
-        env:
-          EMBARKO_DEPLOY_TOKEN: ${{ secrets.EMBARKO_DEPLOY_TOKEN }}
         run: |
           for i in $(seq 1 40); do
             sleep 15
