@@ -86,14 +86,23 @@ jobs:
           for i in $(seq 1 40); do
             sleep 15
             status="$(curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
               "https://ship.embarko.ai/apps/$EMBARKO_APP_NAME/status")"
             echo "$status"
-            if echo "$status" | grep -q '"status":"live"'; then
-              echo "App is live: https://$EMBARKO_APP_NAME.embarko.app"
+            state="$(echo "$status" | jq -r '.status // empty')"
+            if [ "$state" = "live" ]; then
+              app_url="$(echo "$status" | jq -r '.links.app // empty')"
+              if [ -z "$app_url" ]; then
+                echo "::error::Embarko reported live but did not provide links.app."
+                exit 1
+              fi
+              echo "App is live: $app_url"
               exit 0
             fi
-            if echo "$status" | grep -q '"status":"failed"'; then
+            if [ "$state" = "failed" ] || [ "$state" = "crashed" ]; then
+              echo "Embarko deployment state: $state"
               curl --silent --show-error \
+                -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
                 "https://ship.embarko.ai/apps/$EMBARKO_APP_NAME/logs?stream=stderr" || true
               exit 1
             fi
