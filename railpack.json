@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "steps": {
+    "extensions": {
+      "commands": [
+        "...",
+        "install-php-extensions calendar gd zip"
+      ]
+    }
+  }
+}
