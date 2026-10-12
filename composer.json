@@ -85,7 +85,8 @@
             "Webkul\\Warehouse\\": "packages/Webkul/Warehouse/src",
             "Webkul\\WebForm\\": "packages/Webkul/WebForm/src",
             "Webkul\\ViaSocket\\": "packages/Webkul/ViaSocket/src",
-            "Webkul\\Automation\\": "packages/Webkul/Automation/src"
+            "Webkul\\Automation\\": "packages/Webkul/Automation/src",
+            "Webkul\\Attribute\\": "packages/Webkul/Attribute/src"
         }
     },
     "autoload-dev": {
