@@ -26,7 +26,11 @@
         "mpdf/mpdf": "^8.2",
         "prettus/l5-repository": "^3.0",
         "smalot/pdfparser": "^2.11",
-        "webklex/laravel-imap": "^6.0"
+        "webklex/laravel-imap": "^6.0",
+        "ext-calendar": "*",
+        "ext-gd": "*",
+        "ext-zip": "*",
+        "ext-pdo_mysql": "*"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",
@@ -64,9 +68,8 @@
             "Database\\Seeders\\": "database/seeders/",
             "Webkul\\Activity\\": "packages/Webkul/Activity/src",
             "Webkul\\Admin\\": "packages/Webkul/Admin/src",
-            "Webkul\\Attribute\\": "packages/Webkul/Attribute/src",
-            "Webkul\\Contact\\": "packages/Webkul/Contact/src",
             "Webkul\\Core\\": "packages/Webkul/Core/src",
+            "Webkul\\Contact\\": "packages/Webkul/Contact/src",
             "Webkul\\DataGrid\\": "packages/Webkul/DataGrid/src",
             "Webkul\\DataTransfer\\": "packages/Webkul/DataTransfer/src",
             "Webkul\\Email\\": "packages/Webkul/Email/src",
