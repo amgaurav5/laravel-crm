@@ -50,6 +50,8 @@ jobs:
             -X POST "https://ship.embarko.ai/apps" \
             -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
             -H "X-App-Name: krayin-viasocket-demo" \
+            -H "X-App-Version: ${GITHUB_SHA:0:12}" \
+            -H "X-Agent-Name: ChatGPT" \
             -H "Accept: application/json" \
             -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip")"
           http_code="${response##*$'\n'}"
@@ -57,14 +59,8 @@ jobs:
           echo "$body"
 
           if [ "$http_code" = "401" ]; then
-            echo "Embarko rejected the saved token; trying an unauthenticated temporary demo deployment."
-            response="$(curl --silent --show-error -w '\n%{http_code}' \
-              -X POST "https://ship.embarko.ai/apps" \
-              -H "Accept: application/json" \
-              -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip")"
-            http_code="${response##*$'\n'}"
-            body="${response%$'\n'*}"
-            echo "$body"
+            echo "::error::Embarko rejected the KRAYIN token. Refusing an anonymous deploy because it cannot safely update the claimed app."
+            exit 1
           fi
 
           if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
@@ -106,6 +102,12 @@ jobs:
               curl --silent --show-error \
                 -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
                 "https://ship.embarko.ai/apps/$EMBARKO_APP_NAME/logs?stream=stderr" || true
+              echo
+              echo "Recent deployment history:"
+              curl --silent --show-error \
+                -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
+                "https://ship.embarko.ai/api/apps/$EMBARKO_APP_NAME/deployments" \
+                | jq '[.deployments[]? | {id: (.id // .deploymentId), version, status, createdAt, error}]' || true
               exit 1
             fi
           done
