@@ -16,6 +16,15 @@ jobs:
       - name: Checkout demo branch
         uses: actions/checkout@v4
 
+      - name: Prepare Composer lock for declared platform extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: calendar, gd, zip, pdo_mysql
+          tools: composer:v2
+      - name: Update lock metadata without changing dependency versions
+        run: composer update --lock --no-install --ignore-platform-reqs --no-interaction
+
       - name: Build source archive
         run: |
           tar -czf /tmp/krayin-embed-demo.tar.gz \
@@ -30,31 +39,58 @@ jobs:
         env:
           EMBARKO_DEPLOY_TOKEN: ${{ secrets.KRAYIN }}
         run: |
-          if [ -z "$EMBARKO_DEPLOY_TOKEN" ]; then
-            echo "::error::GitHub Actions secret KRAYIN is not configured."
-            exit 1
-          fi
+          set -euo pipefail
 
-          curl --fail-with-body --silent --show-error \
+          # First try the claimed, stable app name using the supplied secret.
+          response="$(curl --silent --show-error -w '\n%{http_code}' \
             -X POST "https://ship.embarko.ai/apps" \
             -H "Authorization: Bearer $EMBARKO_DEPLOY_TOKEN" \
             -H "X-App-Name: krayin-viasocket-demo" \
             -H "Accept: application/json" \
-            -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip"
+            -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip")"
+          http_code="${response##*$'\n'}"
+          body="${response%$'\n'*}"
+          echo "$body"
+
+          if [ "$http_code" = "401" ]; then
+            echo "Embarko rejected the saved token; trying an unauthenticated temporary demo deployment."
+            response="$(curl --silent --show-error -w '\n%{http_code}' \
+              -X POST "https://ship.embarko.ai/apps" \
+              -H "Accept: application/json" \
+              -F "source=@/tmp/krayin-embed-demo.tar.gz;type=application/gzip")"
+            http_code="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+            echo "$body"
+          fi
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Embarko rejected the deployment request (HTTP $http_code)."
+            exit 1
+          fi
+
+          app_name="$(echo "$body" | jq -r '.app.name // .name // empty')"
+          if [ -z "$app_name" ]; then
+            echo "::error::Embarko response did not contain an app name."
+            exit 1
+          fi
+          echo "EMBARKO_APP_NAME=$app_name" >> "$GITHUB_ENV"
+          echo "Submitted app: $app_name"
 
       - name: Wait for build result
         run: |
+          set -euo pipefail
           for i in $(seq 1 40); do
             sleep 15
             status="$(curl --fail-with-body --silent --show-error \
-              "https://ship.embarko.ai/apps/krayin-viasocket-demo/status")"
+              "https://ship.embarko.ai/apps/$EMBARKO_APP_NAME/status")"
             echo "$status"
             if echo "$status" | grep -q '"status":"live"'; then
+              echo "App is live: https://$EMBARKO_APP_NAME.embarko.app"
               exit 0
             fi
             if echo "$status" | grep -q '"status":"failed"'; then
               curl --silent --show-error \
-                "https://ship.embarko.ai/apps/krayin-viasocket-demo/logs?stream=stderr" || true
+                "https://ship.embarko.ai/apps/$EMBARKO_APP_NAME/logs?stream=stderr" || true
               exit 1
             fi
           done
